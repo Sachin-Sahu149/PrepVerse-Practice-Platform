@@ -8,17 +8,338 @@ datasource db {
 }
 
 model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
-  posts Post[]
+  id                Int                @id @default(autoincrement())
+  email             String             @unique
+  name              String
+  userID            String             @unique
+  emailResults      EmailResult[]
+  essayResults      EssayResult[]
+  notifications     Notification[] // relation: all notifications received by this user
+  feedbacks         Feedback[] // relation: all feedback entries given by this user
+  aiRecommendations AIRecommendation[] // AI recommendation to the users
+  progressReports   ProgressReport[] // progress report of the users
+  profile           Profile?
+  approvedQuestions Question[]         @relation("QuestionApprovedUser") // relation: questions approved by this user
+  practiceSessions  PracticeSession[] // relation: all practice sessions attempted by this user
 }
 
-model Post {
-  id        Int     @id @default(autoincrement())
-  title     String
-  content   String?
-  published Boolean @default(false)
-  author    User    @relation(fields: [authorId], references: [id])
-  authorId  Int
+model Badge {
+  id          Int       @id @default(autoincrement()) // unique identifier for each badge
+  name        String // name of the badge (e.g., "Streak Starter")
+  description String? // description about this badge and what level it represents
+  icon        String? // badge icon (URL or file name)
+  condition   Json // conditions to earn badge, e.g. { streak: 5, xp: 100 }
+  type        BadgeType // type of badge: streak, achievement, performance
+  createdAt   DateTime  @default(now()) // time when badge was created
+  updatedAt   DateTime  @updatedAt // last updated timestamp
+  profiles    Profile[] @relation("ProfileBadges") // relation: which profiles earned this badge
+}
+
+enum BadgeType {
+  streak // earned by maintaining streaks
+  achievement // earned by completing milestones
+  performance // earned by high performance metrics
+}
+
+model Topic {
+  id                     Int               @id @default(autoincrement())
+  name                   String
+  category               Category
+  icon                   String
+  description            String?
+  difficultyDistribution Json // stores { easy: Int, medium: Int, hard: Int }
+  totalQuestion          Int
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+  profiles               Profile[] // relation: profiles that prefer this topic
+  questions              Question[] // relation: questions belonging to this topic
+  practiceSessions       PracticeSession[] // relation: all practice sessions for this topic
+}
+
+enum Category {
+  Technical
+  Communication
+  Aptitude
+}
+
+// ✅ Email Challenges (problem statements)
+model EmailChallenge {
+  id                 Int           @id @default(autoincrement()) // unique identifier
+  category           EmailCategory // category of email challenge
+  problemStatement   String // email problem statement
+  difficultyLevel    Difficulty // easy | medium | hard
+  evaluationKeywords String[] // keywords for evaluation
+  wordCount          Int // required word count
+  requiredTime       Int // required time in minutes
+  content            Json // { subject, body } correct answer
+  createdAt          DateTime      @default(now()) // creation timestamp
+  updatedAt          DateTime      @updatedAt // last updated timestamp
+  results            EmailResult[] // relation: all results for this challenge
+}
+
+// ✅ Email Results (user submissions)
+model EmailResult {
+  id                      Int                 @id @default(autoincrement()) // unique identifier for result
+  userId                  Int // FK: user who submitted
+  user                    User                @relation(fields: [userId], references: [id])
+  challengeId             Int // FK: email challenge attempted
+  challenge               EmailChallenge      @relation(fields: [challengeId], references: [id])
+  userEmail               String // email written by user
+  overallScore            Int // overall score (e.g., 85)
+  grammarAccuracy         GrammarAccuracy // excellent | good | average | poor
+  keywordCoverage         Json // { matchedKeywords: [...], percentage: 0.55 }
+  clarityStructureComment String? // comment on clarity/structure
+  toneAppropriateness     ToneAppropriateness // excellent | acceptable | unprofessional
+  aiFeedback              String? // AI-generated feedback
+  timeTaken               Int? // time spent in seconds
+  createdAt               DateTime            @default(now()) // submission timestamp
+}
+
+// ✅ Enum for email categories
+enum EmailCategory {
+  job_application
+  complaint
+  request
+  campus_email
+  business
+}
+
+// ✅ Enum for tone appropriateness
+enum ToneAppropriateness {
+  excellent
+  acceptable
+  unprofessional
+}
+
+// ✅ Essay Questions stored here
+model EssayQuestion {
+  id                         Int           @id @default(autoincrement()) // unique identifier
+  problemStatement           String // essay problem statement
+  difficultyLevel            Difficulty // easy | medium | hard
+  category                   EssayCategory // technical, moral, historical, abstract, business, personal-growth, others
+  requiredTime               Int // required time in minutes
+  requiredWordCount          Int // required word count
+  essayOutline               Json // { heading: "string", hintQuestions: ["q1","q2","q3"] }
+  evaluationCriteriaKeywords String[] // keywords for evaluation (e.g., leadership, teamwork)
+  createdAt                  DateTime      @default(now()) // creation timestamp
+  updatedAt                  DateTime      @updatedAt // last updated timestamp
+  results                    EssayResult[] // relation: all results for this question
+}
+
+// ✅ Essay Results stored here
+model EssayResult {
+  id               Int             @id @default(autoincrement()) // unique identifier for result
+  userId           Int // FK: user who submitted essay
+  user             User            @relation(fields: [userId], references: [id])
+  questionId       Int // FK: essay question attempted
+  question         EssayQuestion   @relation(fields: [questionId], references: [id])
+  userEssay        String // essay written by user
+  overallScore     Int // overall score (e.g., 50, 80, 90)
+  keywordCoverage  Json // { matchedKeywords: ["leadership","growth"], percentage: 0.75 }
+  grammarAccuracy  GrammarAccuracy // excellent | good | average | poor
+  structureComment String? // comments on logical flow
+  coherence        Coherence // basic | good | excellent
+  tone             Tone // professional | casual | formal | very poor
+  aiFeedback       String? // AI-generated feedback
+  timeTaken        Int? // time taken in seconds
+  essayContent     String? // curated/correct essay content
+  createdAt        DateTime        @default(now()) // submission timestamp
+}
+
+// ✅ Enum for essay categories
+enum EssayCategory {
+  technical
+  moral
+  historical
+  abstract
+  business
+  personal_growth
+  others
+}
+
+// ✅ Enum for grammar accuracy
+enum GrammarAccuracy {
+  excellent
+  good
+  average
+  poor
+}
+
+// ✅ Enum for coherence
+enum Coherence {
+  basic
+  good
+  excellent
+}
+
+// ✅ Enum for tone
+enum Tone {
+  professional
+  casual
+  formal
+  very_poor
+}
+
+// ✅ Tracks each practice or test session
+model PracticeSession {
+  id               Int                       @id @default(autoincrement()) // unique identifier for each session
+  userId           Int // FK: user who attempted
+  user             User                      @relation(fields: [userId], references: [id])
+  topicId          Int // FK: topic practiced/tested
+  topic            Topic                     @relation(fields: [topicId], references: [id])
+  practiceType     PracticeType // practice or test
+  totalQuestions   Int // total attempted questions
+  correctAnswers   Int // number of correct answers
+  incorrectAnswers Int // number of wrong answers
+  accuracy         Float // accuracy percentage
+  overallScore     Float // overall score
+  difficulty       Difficulty // easy, medium, hard
+  startedAt        DateTime // session start time
+  completedAt      DateTime? // session completion time
+  totalTimeSpent   Int // total time spent (seconds)
+  xpEarned         Int // XP earned in this session
+  questions        PracticeSessionQuestion[] // relation: all questions attempted in this session
+  createdAt        DateTime                  @default(now()) // record creation timestamp
+  updatedAt        DateTime                  @updatedAt // last updated timestamp
+}
+
+// ✅ Tracks each question attempted inside a session
+model PracticeSessionQuestion {
+  id             Int             @id @default(autoincrement()) // unique identifier for each attempted question
+  sessionId      Int // FK: linked to PracticeSession
+  session        PracticeSession @relation(fields: [sessionId], references: [id])
+  questionId     Int // FK: linked to Question
+  question       Question        @relation(fields: [questionId], references: [id])
+  selectedOption Int? // option chosen by user
+  isCorrect      Boolean // whether selected answer was correct
+  timeSpent      Int // time spent on this question (seconds)
+}
+
+// ✅ Enum for practice type
+enum PracticeType {
+  practice // normal practice session
+  test // mock test session
+}
+
+// ✅ Enum for difficulty levels
+enum Difficulty {
+  easy
+  medium
+  hard
+}
+
+// Notifications model 
+model Notification {
+  id        Int              @id @default(autoincrement()) // unique identifier for each notification
+  userId    Int // foreign key: receiver of the notification
+  user      User             @relation(fields: [userId], references: [id]) // relation to User
+  type      NotificationType // type of notification: achievement, reminder, others
+  title     String // notification title
+  message   String // notification message content
+  isRead    Boolean          @default(false) // whether the notification has been read
+  createdAt DateTime         @default(now()) // time when notification was created
+  updatedAt DateTime         @updatedAt // last updated timestamp (modifications to message)
+}
+
+enum NotificationType {
+  achievement // notification for achievements
+  reminder // notification for reminders
+  others // miscellaneous notifications
+}
+
+model Feedback {
+  id         Int              @id @default(autoincrement()) // unique identifier for each feedback entry
+  userId     Int // foreign key: who gave the feedback
+  user       User             @relation(fields: [userId], references: [id]) // relation to User
+  content    String // feedback message
+  category   FeedbackCategory // type of feedback: bug, suggestion, appreciation
+  createdAt  DateTime         @default(now()) // time when feedback was created
+  rating     Int? // rating given by user to the platform
+  isReviewed Boolean          @default(false) // whether feedback has been reviewed
+}
+
+enum FeedbackCategory {
+  bug // feedback about issues or errors
+  suggestion // feedback suggesting improvements
+  appreciation // positive feedback or compliments
+}
+
+// Leaderboard ranking for weekly or monthly or yearly or for all time 
+model Leaderboard {
+  id        Int      @id @default(autoincrement()) // unique identifier for each leaderboard entry
+  period    Period // leaderboard type: weekly, monthly, overall
+  users     Json // array of objects: [{ userId, rank, xp, streak }]
+  createdAt DateTime @default(now()) // time when leaderboard was generated
+  updatedAt DateTime @updatedAt // last updated timestamp
+}
+
+enum Period {
+  weekly // leaderboard for weekly performance
+  monthly // leaderboard for monthly performance
+  overall // leaderboard for overall performance
+}
+
+model AIRecommendation {
+  id              Int      @id @default(autoincrement()) // primary key
+  userId          Int
+  user            User     @relation(fields: [userId], references: [id])
+  recommendations Json // [{ topicId, message, priority }]
+  generatedAt     DateTime @default(now())
+  read            Boolean  @default(false)
+}
+
+model ProgressReport {
+  id             Int      @id @default(autoincrement()) // unique identifier
+  userId         Int
+  user           User     @relation(fields: [userId], references: [id])
+  weekRange      String // e.g. "Oct 21–27"
+  totalQuestions Int
+  accuracyRate   Float // percentage or ratio
+  totalTimeSpent Int // seconds
+  topicWiseStats Json // [{ topicId, accuracy, attempts, total_time }]
+  aiInsights     String[] // personalized feedback
+  generatedAt    DateTime @default(now())
+}
+
+// users profile 
+model Profile {
+  id              Int       @id @default(autoincrement()) // unique identifier
+  userId          Int       @unique // linked user (1:1 relation)
+  user            User      @relation(fields: [userId], references: [id])
+  name            String
+  avatarUrl       String?
+  bio             String?
+  level           Int       @default(1) // XP level
+  xp              Int       @default(0) // total XP points
+  streak          Int       @default(0) // current streak
+  badges          Badge[]   @relation("ProfileBadges") // earned badges
+  preferredTopics Topic[] // preferred topics
+  goals           String[] // custom learning goals
+  lastActiveAt    DateTime? // track user engagement
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Question {
+  id                       Int                       @id @default(autoincrement())
+  topicId                  Int // foreign key to Topic
+  topic                    Topic                     @relation(fields: [topicId], references: [id])
+  type                     QuestionType
+  text                     String
+  options                  String[] // array of possible answers
+  correctOption            Int? // index of correct answer
+  explanation              String?
+  difficulty               Difficulty
+  keywords                 String[] // subtopics info
+  approvedBy               Int? // foreign key to User
+  approvedUser             User?                     @relation("QuestionApprovedUser", fields: [approvedBy], references: [id])
+  lastUpdated              DateTime                  @updatedAt
+  weightage                Int // XP points earned
+  createdAt                DateTime                  @default(now())
+  practiceSessionQuestions PracticeSessionQuestion[] // relation: all practice session questions linked to this question
+}
+
+enum QuestionType {
+  MCQ
+  Grammar
 }
