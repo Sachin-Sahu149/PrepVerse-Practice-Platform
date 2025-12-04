@@ -1,5 +1,5 @@
 import Router from "express";
-import { allTopics, oneTopic, findQuestions, fetchOneQuestion, addQuestions, modifyQuestions, destroyQuestions } from "../controllers/topics.controller";
+import { allTopics, oneTopic, findQuestions, fetchOneQuestion, addQuestions, modifyQuestions, destroyQuestions, createWritingChallenge } from "../controllers/topics.controller";
 
 const router = Router();
 
@@ -116,6 +116,8 @@ router.patch("/admin/:topicId/:questionId", modifyQuestions);
  */
 router.delete("/admin/:topicId/:questionId", destroyQuestions);
 
+// router to post the writing challenge, essay or email 
+router.post("/admin/writing/questions", createWritingChallenge);
 
 
 export default router;

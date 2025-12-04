@@ -27,4 +27,7 @@ export async function modifyQuestions(req: Request, res: Response) {
 
 export async function destroyQuestions(req: Request, res: Response) {
 
+}
+export async function createWritingChallenge(req: Request, res: Response) {
+
 } 
