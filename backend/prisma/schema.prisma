@@ -21,6 +21,7 @@ model User {
   profile           Profile?
   approvedQuestions Question[]         @relation("QuestionApprovedUser") // relation: questions approved by this user
   practiceSessions  PracticeSession[] // relation: all practice sessions attempted by this user
+  
 }
 
 model Badge {

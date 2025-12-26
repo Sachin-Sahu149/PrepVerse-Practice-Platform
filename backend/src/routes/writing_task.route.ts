@@ -79,16 +79,16 @@ router.get("/practice/email/challenge/:challengeId/report", fetchPracticeChallen
 /* ======================================================================= */
 
 /**
+ * GET /essay/writing/challenges
+ * Fetch all essay writing challenges.
+ */
+router.get("/essay/writing/challenges", fetchAllWritingChallengesAdmin);
+/**
  * POST /admin/essay/writing/challenge
  * Create a new essay writing challenge.
  */
 router.post("/admin/essay/writing/challenge", createWritingChallengeAdmin);
 
-/**
- * GET /essay/writing/challenges
- * Fetch all essay writing challenges.
- */
-router.get("/essay/writing/challenges", fetchAllWritingChallengesAdmin);
 
 /**
  * GET /essay/writing/:challengeId
@@ -116,22 +116,21 @@ router.delete("/admin/essay/writing/:challengeId", deleteWritingChallengeAdmin);
 /* ======================================================================= */
 
 /**
- * POST /admin/email/writing/challenge
- * Create a new email writing challenge.
- */
-router.post("/admin/email/writing/challenge", createWritingChallengeAdmin);
-
-/**
  * GET /email/writing/challenges
  * Fetch all email writing challenges.
  */
 router.get("/email/writing/challenges", fetchAllWritingChallengesAdmin);
-
 /**
  * GET /email/writing/:challengeId
  * Fetch one email writing challenge.
  */
 router.get("/email/writing/:challengeId", fetchSingleWritingChallengeAdmin);
+/**
+ * POST /admin/email/writing/challenge
+ * Create a new email writing challenge.
+ */
+router.post("/admin/email/writing/challenge", createWritingChallengeAdmin);
+
 
 /**
  * PATCH /admin/email/writing/:challengeId

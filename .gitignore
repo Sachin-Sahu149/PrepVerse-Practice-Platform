@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+
+# Environment Files
+.env
+.env.local
+.env.*.local
+
+# Build Output
+dist/
+build/
+
+# Logs & Debug Files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Cache
+.cache/
+.next/
+.vercel/
+.expo/
+temp/
+tmp/
+
+# Coverage
+coverage/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# IDE Files
+.vscode/
+.idea/
+
+# Database
+*.sqlite
+*.db
+
+# Other
+*.zip
+*.tar

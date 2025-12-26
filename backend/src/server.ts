@@ -22,7 +22,10 @@ app.use(cors())
 
 const PORT = process.env.PORT || 3000;
 
-// router
+// middleware 
+// app.use("/",(req,res)=>{
+//   return res.json({message : "server is listing"});
+// })
 app.use("/api/v1", topicRouter);
 app.use("api/v1", practiceSessionRoute);
 app.use("api/v1", writingChallengeRoute);
