@@ -86,8 +86,10 @@ router.get("/essay/writing/challenges", fetchAllWritingChallengesAdmin);
 /**
  * POST /admin/essay/writing/challenge
  * Create a new essay writing challenge.
+ * Body will contain 
+ * 
  */
-router.post("/admin/essay/writing/challenge", createWritingChallengeAdmin);
+router.post("/admin/essay/writing/challenge", createEssayWritingChallengeAdmin);
 
 
 /**
