@@ -91,10 +91,11 @@ router.post("/admin/topic",createNewTopics);
  *    correctIndex?: number,
  *    explanation?: string,
  *    difficulty: "easy" | "medium" | "hard",
- *    tags?: string[]
+ *    keywords?: string[]
+ * 
  *  }
  */
-router.post("/admin/questions", addQuestions);
+router.post("/admin/question", addQuestions);
 
 
 
