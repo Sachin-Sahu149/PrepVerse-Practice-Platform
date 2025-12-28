@@ -1,5 +1,5 @@
 import Router from "express";
-import { allTopics, oneTopic, findQuestions,createNewTopics, fetchOneQuestion, addQuestions, modifyQuestions, destroyQuestions, createWritingChallenge } from "../controllers/topics.controller";
+import { allTopics, oneTopic, findQuestions, createNewTopics, fetchOneQuestion, addQuestions, modifyQuestions, destroyQuestions, modifyTopic, destroyTopic, } from "../controllers/topics.controller";
 
 const router = Router();
 
@@ -66,6 +66,7 @@ router.get("/questions/:questionId", findQuestions);
  */
 router.get("/questions/:topicId/:questionId", fetchOneQuestion);
 
+//----------------Topic---------------------------------------------
 // admin rotues to create the topics 
 // payloads - {
 // routes to create the topics 
@@ -73,9 +74,13 @@ router.get("/questions/:topicId/:questionId", fetchOneQuestion);
 // category - topics category (technical, communication, aptitude)
 // description - topics description 
 //  }
-router.post("/admin/topic",createNewTopics);
+router.post("/admin/topic", createNewTopics);
 
 
+router.patch("/admin/topic", modifyTopic);
+router.delete("/admin/topic/:topicId", destroyTopic);
+
+//----------------/////////---------------------------------------------
 
 /**
  * POST /admin/questions
