@@ -72,7 +72,7 @@ model EmailChallenge {
   evaluationKeywords String[] // keywords for evaluation
   wordCount          Int // required word count
   requiredTime       Int // required time in minutes
-  content            Json // { subject, body } correct answer
+  content            Json? // { subject, body } correct answer
   createdAt          DateTime      @default(now()) // creation timestamp
   updatedAt          DateTime      @updatedAt // last updated timestamp
   results            EmailResult[] // relation: all results for this challenge
