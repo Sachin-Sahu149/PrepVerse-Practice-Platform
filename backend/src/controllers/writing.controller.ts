@@ -3,7 +3,6 @@ import { createEssayChallengeSchema } from "../Validators/essayChallenge.validat
 import { prisma } from "../../lib/prisma";
 import z from 'zod';
 import { createEmailChallengeSchema } from "../Validators/emailChallenge.validator";
-import { Category } from "../../generated/prisma/enums";
 
 /* ======================================================================= */
 /*                               TEST MODE                                  */
@@ -60,6 +59,20 @@ export async function fetchPracticeChallengeReport(req: Request, res: Response) 
 
 // ----------------Essay controller-------------------------------------------------
 // 
+
+// Submit the task 
+
+export async function submitEssayChallenge(req: Request, res: Response) {
+    try {
+        // validate the req.body
+        
+    } catch (error) {
+        console.error("Error in submition of essay challenge : ", error);
+        return res.status(500).json({
+            message: "Internal server error"
+        });
+    }
+}
 
 /**
  * Fetch a single essay challenge by ID
