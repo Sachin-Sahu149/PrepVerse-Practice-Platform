@@ -59,9 +59,72 @@ export async function fetchPracticeChallengeReport(req: Request, res: Response) 
 /* ======================================================================= */
 
 // ----------------Essay controller-------------------------------------------------
+// 
+
+/**
+ * Fetch a single essay challenge by ID
+ */
+// for user side 
+export async function fetchOneEssayChallenge(req: Request, res: Response) {
+    try {
+        // 1️⃣ Validate challengeId param (params are strings → coerce)
+        const paramSchema = z.object({
+            challengeId: z.coerce.number().int().positive(),
+        });
+
+        const parsedResult = paramSchema.safeParse({
+            challengeId: req.params.id,
+        });
+
+        if (!parsedResult.success) {
+            return res.status(400).json({
+                message: "Invalid challenge id",
+            });
+        }
+
+        const { challengeId } = parsedResult.data;
+
+        // 2️⃣ Fetch essay challenge
+        const challenge = await prisma.essayQuestion.findUnique({
+            where: { id: challengeId },
+            select: {
+                id: true,
+                problemStatement: true,
+                difficultyLevel: true,
+                category: true,
+                requiredTime: true,
+                requiredWordCount: true,
+                essayOutline: true,
+                createdAt: true,
+                updatedAt: true,
+                // 🔐 evaluationCriteriaKeywords intentionally hidden from users
+            },
+        });
+
+        // 3️⃣ Not found check
+        if (!challenge) {
+            return res.status(404).json({
+                message: "Essay challenge not found",
+            });
+        }
+
+        // 4️⃣ Success response
+        return res.status(200).json({
+            data: challenge,
+        });
+
+    } catch (error) {
+        console.error("Error fetching essay challenge:", error);
+
+        return res.status(500).json({
+            message: "Internal server error",
+        });
+    }
+}
 
 // controller to fetch all the essay challenge 
 // cursor and pagination 
+// for user side 
 export async function fetchEssayChallenge(req: Request, res: Response) {
     try {
 
@@ -103,7 +166,7 @@ export async function fetchEssayChallenge(req: Request, res: Response) {
         if (search) {
             whereClause.problemStatement = {
                 contains: search,
-                mod: "insenstive"
+                mode: "insenstive"
             };
         }
 
@@ -115,7 +178,19 @@ export async function fetchEssayChallenge(req: Request, res: Response) {
                 take: limit + 1,
                 orderBy: {
                     createdAt: "desc"
-                }
+                },
+                select: {
+                    id: true,
+                    problemStatement: true,
+                    difficultyLevel: true,
+                    category: true,
+                    requiredTime: true,
+                    requiredWordCount: true,
+                    essayOutline: true,
+                    createdAt: true,
+                    updatedAt: true,
+                    // 🔐 evaluationCriteriaKeywords intentionally hidden from users
+                },
             });
             const hasNextPage = challenges.length > limit;
             const data = hasNextPage ? challenges.slice(0, limit) : challenges;
@@ -162,6 +237,158 @@ export async function fetchEssayChallenge(req: Request, res: Response) {
         });
     }
 }
+
+// for admin side 
+
+export async function fetchOneEssayChallengeAdmin(req: Request, res: Response) {
+    try {
+        // 1️⃣ Validate challengeId param (params are strings → coerce)
+        const paramSchema = z.object({
+            challengeId: z.coerce.number().int().positive(),
+        });
+
+        const parsedResult = paramSchema.safeParse({
+            challengeId: req.params.id,
+        });
+
+        if (!parsedResult.success) {
+            return res.status(400).json({
+                message: "Invalid challenge id",
+            });
+        }
+
+        const { challengeId } = parsedResult.data;
+
+        // 2️⃣ Fetch essay challenge
+        const challenge = await prisma.essayQuestion.findUnique({
+            where: { id: challengeId },
+        });
+
+        // 3️⃣ Not found check
+        if (!challenge) {
+            return res.status(404).json({
+                message: "Essay challenge not found",
+            });
+        }
+
+        // 4️⃣ Success response
+        return res.status(200).json({
+            data: challenge,
+        });
+
+    } catch (error) {
+        console.error("Error fetching essay challenge:", error);
+
+        return res.status(500).json({
+            message: "Internal server error",
+        });
+    }
+}
+
+
+// for admin side 
+export async function fetchEssayChallengeAdmin(req: Request, res: Response) {
+    try {
+
+        //validate query params 
+        const querySchema = z.object({
+            page: z.coerce.number().int().positive().optional(),
+            limit: z.coerce.number().int().min(1).max(50).optional(),
+            cursorId: z.coerce.number().int().positive().optional(),
+            difficultyLevel: z.enum(["easy", "medium", "hard"]).optional(),
+            category: z.enum([
+                "technical",
+                "moral",
+                "historical",
+                "abstract",
+                "business",
+                "personal_growth",
+                "others"
+            ]).optional(),
+            search: z.string().trim().min(1).optional(),
+            // page:z.coerce.number().int().min(1).max(50).optional()
+        })
+
+        const parsedQuery = querySchema.safeParse(req.query);
+
+        if (!parsedQuery.success) {
+            return res.status(400).json({
+                message: "Invalid query paramters",
+            });
+        }
+
+        const { page = 1, limit = 10, cursorId, difficultyLevel, category, search } = parsedQuery.data;
+
+        // build where clause filters
+        const whereClause: any = {};
+
+        if (difficultyLevel) whereClause.difficultyLevel = difficultyLevel;
+        if (category) whereClause.category = category;
+
+        if (search) {
+            whereClause.problemStatement = {
+                contains: search,
+                mode: "insenstive"
+            };
+        }
+
+        if (cursorId) {
+            const challenges = await prisma.essayQuestion.findMany({
+                where: whereClause,
+                cursor: { id: cursorId },
+                skip: 1,
+                take: limit + 1,
+                orderBy: {
+                    createdAt: "desc"
+                },
+            });
+            const hasNextPage = challenges.length > limit;
+            const data = hasNextPage ? challenges.slice(0, limit) : challenges;
+
+            return res.status(200).json({
+                data,
+                pagination: {
+                    type: "cursor",
+                    hasNextPage,
+                    nextCursor: hasNextPage ? data[data.length - 1].id : null,
+                }
+            })
+        }
+
+        // 4️⃣ Offset-based pagination
+        const skip = (page - 1) * limit;
+
+        const [data, totalCount] = await Promise.all([
+            prisma.essayQuestion.findMany({
+                where: whereClause,
+                skip,
+                take: limit,
+                orderBy: { createdAt: "desc" },
+            }),
+            prisma.essayQuestion.count({ where: whereClause }),
+        ]);
+
+        return res.status(200).json({
+            data,
+            pagination: {
+                type: "page",
+                page,
+                limit,
+                totalCount,
+                totalPages: Math.ceil(totalCount / limit),
+                hasNextPage: skip + data.length < totalCount,
+            },
+        });
+
+    } catch (error) {
+        console.error("Error in fetching the essay challenge :", error);
+        return res.status(500).json({
+            message: "Internal server error"
+        });
+    }
+}
+
+
 
 /**
  * Admin: Create a new writing challenge (essay or email).
@@ -430,7 +657,113 @@ export async function destroyEssayChallenge(req: Request, res: Response) {
 
 //---------------------Email-------------------------------------------------------------------------------------------
 
+// Fetch only one email 
+export async function fetchOneEmail(req: Request, res: Response) {
+    try {
+        // 1️⃣ Validate challengeId param
+        const paramSchema = z.object({
+            challengeId: z.coerce.number().int().positive(),
+        });
 
+        const parsedResult = paramSchema.safeParse({
+            challengeId: req.params.id,
+        });
+
+        if (!parsedResult.success) {
+            return res.status(400).json({
+                message: "Invalid challenge id",
+            });
+        }
+
+
+
+        const { challengeId } = parsedResult.data;
+
+        // 2️⃣ Fetch challenge
+        const challenge = await prisma.emailChallenge.findUnique({
+            where: { id: challengeId },
+            select: {
+                id: true,
+                category: true,
+                problemStatement: true,
+                difficultyLevel: true,
+                wordCount: true,
+                requiredTime: true,
+                createdAt: true,
+                updatedAt: true,
+                // 🔐 hide content & evaluation keywords from users
+            },
+        });
+
+
+
+        // 3️⃣ Not found check
+        if (!challenge) {
+            return res.status(404).json({
+                message: "Email challenge not found",
+            });
+        }
+
+        // 4️⃣ Success response
+        return res.status(200).json({
+            data: challenge,
+        });
+
+    } catch (error) {
+        console.error("Error fetching email challenge:", error);
+        return res.status(500).json({
+            message: "Internal server error"
+        });
+    }
+}
+// for admin side 
+export async function fetchOneEmailAdmin(req: Request, res: Response) {
+    try {
+        // 1️⃣ Validate challengeId param
+        const paramSchema = z.object({
+            challengeId: z.coerce.number().int().positive(),
+        });
+
+        const parsedResult = paramSchema.safeParse({
+            challengeId: req.params.id,
+        });
+
+        if (!parsedResult.success) {
+            return res.status(400).json({
+                message: "Invalid challenge id",
+            });
+        }
+
+
+
+        const { challengeId } = parsedResult.data;
+
+        // 2️⃣ Fetch challenge
+        const challenge = await prisma.emailChallenge.findUnique({
+            where: { id: challengeId },
+        });
+
+
+
+        // 3️⃣ Not found check
+        if (!challenge) {
+            return res.status(404).json({
+                message: "Email challenge not found",
+            });
+        }
+
+        // 4️⃣ Success response
+        return res.status(200).json({
+            data: challenge,
+        });
+
+    } catch (error) {
+        console.error("Error fetching email challenge:", error);
+        return res.status(500).json({
+            message: "Internal server error"
+        });
+    }
+}
 
 
 // Fetech all the records of the email challenge
@@ -438,9 +771,125 @@ export async function destroyEssayChallenge(req: Request, res: Response) {
  * Fetch all email challenges (Admin / User)
  * Supports pagination, cursor-based pagination, filters
  */
+// for user side 
 export async function fetchEmailChallenge(req: Request, res: Response) {
     try {
 
+        //validate query params 
+        const querySchema = z.object({
+            page: z.coerce.number().int().positive().optional(),
+            limit: z.coerce.number().int().positive().min(1).max(50).optional(),
+            cursorId: z.coerce.number().int().positive().optional(),
+            difficultyLevel: z.enum(["easy", "medium", "hard"]).optional(),
+            category: z.enum(
+                ["job_application", "complaint", "request", "campus_email", "business"],
+            ).optional(),
+            search: z.string().trim().min(1).optional(),
+        })
+
+        const parsedQuery = querySchema.safeParse(req.query);
+
+        if (!parsedQuery.success) {
+            return res.status(400).json({
+                message: "Invalid query parameters",
+            });
+        }
+
+        const { page = 1, limit = 10, cursorId, difficultyLevel, category, search } = parsedQuery.data;
+        // 
+        // Build the where clause to filter the records from tables 
+        const whereClause: any = {};
+
+        if (difficultyLevel) {
+            whereClause.difficultyLevel = difficultyLevel;
+        }
+        if (category) {
+            whereClause.category = category;
+        }
+
+
+        if (search) {
+            whereClause.problemStatement = {
+                contains: search,
+                mode: "insensitive",
+            };
+        }
+
+        // 3️⃣ Cursor-based pagination
+        if (cursorId) {
+            const challenges = await prisma.emailChallenge.findMany({
+                where: whereClause,
+                take: limit + 1,
+                skip: 1,
+                cursor: { id: cursorId },
+                orderBy: { createdAt: "desc" },
+                select: {
+                    id: true,
+                    category: true,
+                    problemStatement: true,
+                    difficultyLevel: true,
+                    wordCount: true,
+                    requiredTime: true,
+                    createdAt: true,
+                    updatedAt: true,
+                    // 🔐 hide content & evaluation keywords from users
+                },
+            });
+
+            const hasNextPage = challenges.length > limit;
+            const data = hasNextPage
+                ? challenges.slice(0, limit)
+                : challenges;
+
+            return res.status(200).json({
+                data,
+                pagination: {
+                    type: "cursor",
+                    hasNextPage,
+                    nextCursor: hasNextPage ? data[data.length - 1].id : null,
+                },
+            });
+        }
+
+        // 4️⃣ Offset-based pagination
+        const skip = (page - 1) * limit;
+
+        const [data, totalCount] = await Promise.all([
+            prisma.emailChallenge.findMany({
+                where: whereClause,
+                skip,
+                take: limit,
+                orderBy: { createdAt: "desc" },
+            }),
+            prisma.emailChallenge.count({
+                where: whereClause,
+            }),
+        ]);
+
+        return res.status(200).json({
+            data,
+            pagination: {
+                type: "page",
+                page,
+                limit,
+                totalCount,
+                totalPages: Math.ceil(totalCount / limit),
+                hasNextPage: skip + data.length < totalCount,
+            },
+        });
+
+    } catch (error) {
+        console.error("Error in fetching email : ", error);
+        return res.status(500).json({
+            message: "Internal server error encountered in fetchEmailChallenge"
+        });
+    }
+}
+
+//for admin side 
+
+export async function fetchEmailChallengeAdmin(req: Request, res: Response) {
+    try {
         //validate query params 
         const querySchema = z.object({
             page: z.coerce.number().int().positive().optional(),
