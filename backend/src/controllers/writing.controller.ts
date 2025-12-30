@@ -3,6 +3,7 @@ import { createEssayChallengeSchema } from "../Validators/essayChallenge.validat
 import { prisma } from "../../lib/prisma";
 import z from 'zod';
 import { createEmailChallengeSchema } from "../Validators/emailChallenge.validator";
+import { Category } from "../../generated/prisma/enums";
 
 /* ======================================================================= */
 /*                               TEST MODE                                  */
@@ -59,7 +60,108 @@ export async function fetchPracticeChallengeReport(req: Request, res: Response) 
 
 // ----------------Essay controller-------------------------------------------------
 
+// controller to fetch all the essay challenge 
+// cursor and pagination 
+export async function fetchEssayChallenge(req: Request, res: Response) {
+    try {
 
+        //validate query params 
+        const querySchema = z.object({
+            page: z.coerce.number().int().positive().optional(),
+            limit: z.coerce.number().int().min(1).max(50).optional(),
+            cursorId: z.coerce.number().int().positive().optional(),
+            difficultyLevel: z.enum(["easy", "medium", "hard"]).optional(),
+            category: z.enum([
+                "technical",
+                "moral",
+                "historical",
+                "abstract",
+                "business",
+                "personal_growth",
+                "others"
+            ]).optional(),
+            search: z.string().trim().min(1).optional(),
+            // page:z.coerce.number().int().min(1).max(50).optional()
+        })
+
+        const parsedQuery = querySchema.safeParse(req.query);
+
+        if (!parsedQuery.success) {
+            return res.status(400).json({
+                message: "Invalid query paramters",
+            });
+        }
+
+        const { page = 1, limit = 10, cursorId, difficultyLevel, category, search } = parsedQuery.data;
+
+        // build where clause filters
+        const whereClause: any = {};
+
+        if (difficultyLevel) whereClause.difficultyLevel = difficultyLevel;
+        if (category) whereClause.category = category;
+
+        if (search) {
+            whereClause.problemStatement = {
+                contains: search,
+                mod: "insenstive"
+            };
+        }
+
+        if (cursorId) {
+            const challenges = await prisma.essayQuestion.findMany({
+                where: whereClause,
+                cursor: { id: cursorId },
+                skip: 1,
+                take: limit + 1,
+                orderBy: {
+                    createdAt: "desc"
+                }
+            });
+            const hasNextPage = challenges.length > limit;
+            const data = hasNextPage ? challenges.slice(0, limit) : challenges;
+
+            return res.status(200).json({
+                data,
+                pagination: {
+                    type: "cursor",
+                    hasNextPage,
+                    nextCursor: hasNextPage ? data[data.length - 1].id : null,
+                }
+            })
+        }
+
+        // 4️⃣ Offset-based pagination
+        const skip = (page - 1) * limit;
+
+        const [data, totalCount] = await Promise.all([
+            prisma.essayQuestion.findMany({
+                where: whereClause,
+                skip,
+                take: limit,
+                orderBy: { createdAt: "desc" },
+            }),
+            prisma.essayQuestion.count({ where: whereClause }),
+        ]);
+
+        return res.status(200).json({
+            data,
+            pagination: {
+                type: "page",
+                page,
+                limit,
+                totalCount,
+                totalPages: Math.ceil(totalCount / limit),
+                hasNextPage: skip + data.length < totalCount,
+            },
+        });
+
+    } catch (error) {
+        console.error("Error in fetching the essay challenge :", error);
+        return res.status(500).json({
+            message: "Internal server error"
+        });
+    }
+}
 
 /**
  * Admin: Create a new writing challenge (essay or email).
@@ -327,6 +429,117 @@ export async function destroyEssayChallenge(req: Request, res: Response) {
 }
 
 //---------------------Email-------------------------------------------------------------------------------------------
+
+
+
+
+// Fetech all the records of the email challenge
+/**
+ * Fetch all email challenges (Admin / User)
+ * Supports pagination, cursor-based pagination, filters
+ */
+export async function fetchEmailChallenge(req: Request, res: Response) {
+    try {
+
+        //validate query params 
+        const querySchema = z.object({
+            page: z.coerce.number().int().positive().optional(),
+            limit: z.coerce.number().int().positive().min(1).max(50).optional(),
+            cursorId: z.coerce.number().int().positive().optional(),
+            difficultyLevel: z.enum(["easy", "medium", "hard"]).optional(),
+            category: z.enum(
+                ["job_application", "complaint", "request", "campus_email", "business"],
+            ).optional(),
+            search: z.string().trim().min(1).optional(),
+        })
+
+        const parsedQuery = querySchema.safeParse(req.query);
+
+        if (!parsedQuery.success) {
+            return res.status(400).json({
+                message: "Invalid query parameters",
+            });
+        }
+
+        const { page = 1, limit = 10, cursorId, difficultyLevel, category, search } = parsedQuery.data;
+        // 
+        // Build the where clause to filter the records from tables 
+        const whereClause: any = {};
+
+        if (difficultyLevel) {
+            whereClause.difficultyLevel = difficultyLevel;
+        }
+        if (category) {
+            whereClause.category = category;
+        }
+
+
+        if (search) {
+            whereClause.problemStatement = {
+                contains: search,
+                mode: "insensitive",
+            };
+        }
+
+        // 3️⃣ Cursor-based pagination
+        if (cursorId) {
+            const challenges = await prisma.emailChallenge.findMany({
+                where: whereClause,
+                take: limit + 1,
+                skip: 1,
+                cursor: { id: cursorId },
+                orderBy: { createdAt: "desc" },
+            });
+
+            const hasNextPage = challenges.length > limit;
+            const data = hasNextPage
+                ? challenges.slice(0, limit)
+                : challenges;
+
+            return res.status(200).json({
+                data,
+                pagination: {
+                    type: "cursor",
+                    hasNextPage,
+                    nextCursor: hasNextPage ? data[data.length - 1].id : null,
+                },
+            });
+        }
+
+        // 4️⃣ Offset-based pagination
+        const skip = (page - 1) * limit;
+
+        const [data, totalCount] = await Promise.all([
+            prisma.emailChallenge.findMany({
+                where: whereClause,
+                skip,
+                take: limit,
+                orderBy: { createdAt: "desc" },
+            }),
+            prisma.emailChallenge.count({
+                where: whereClause,
+            }),
+        ]);
+
+        return res.status(200).json({
+            data,
+            pagination: {
+                type: "page",
+                page,
+                limit,
+                totalCount,
+                totalPages: Math.ceil(totalCount / limit),
+                hasNextPage: skip + data.length < totalCount,
+            },
+        });
+
+    } catch (error) {
+        console.error("Error in fetching email : ", error);
+        return res.status(500).json({
+            message: "Internal server error encountered in fetchEmailChallenge"
+        });
+    }
+}
 
 /**
  * Admin: Create a new email writing challenge
