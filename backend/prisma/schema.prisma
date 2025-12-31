@@ -85,11 +85,11 @@ model EmailResult {
   challengeId             Int // FK: email challenge attempted
   challenge               EmailChallenge      @relation(fields: [challengeId], references: [id])
   userEmail               String // email written by user
-  overallScore            Int // overall score (e.g., 85)
-  grammarAccuracy         GrammarAccuracy // excellent | good | average | poor
-  keywordCoverage         Json // { matchedKeywords: [...], percentage: 0.55 }
+  overallScore            Int ?// overall score (e.g., 85)
+  grammarAccuracy         GrammarAccuracy? // excellent | good | average | poor
+  keywordCoverage         Json? // { matchedKeywords: [...], percentage: 0.55 }
   clarityStructureComment String? // comment on clarity/structure
-  toneAppropriateness     ToneAppropriateness // excellent | acceptable | unprofessional
+  toneAppropriateness     ToneAppropriateness? // excellent | acceptable | unprofessional
   aiFeedback              String? // AI-generated feedback
   timeTaken               Int? // time spent in seconds
   createdAt               DateTime            @default(now()) // submission timestamp
@@ -135,12 +135,12 @@ model EssayResult {
   questionId       Int // FK: essay question attempted
   question         EssayQuestion    @relation(fields: [questionId], references: [id])
   userEssay        String // essay written by user
-  overallScore     Int // overall score (e.g., 50, 80, 90)
-  keywordCoverage  Json // { matchedKeywords: ["leadership","growth"], percentage: 0.75 }
-  grammarAccuracy  GrammarAccuracy // excellent | good | average | poor
+  overallScore     Int? // overall score (e.g., 50, 80, 90)
+  keywordCoverage  Json? // { matchedKeywords: ["leadership","growth"], percentage: 0.75 }
+  grammarAccuracy  GrammarAccuracy? // excellent | good | average | poor
   structureComment String? // comments on logical flow
-  coherence        Coherence // basic | good | excellent
-  tone             Tone // professional | casual | formal | very poor
+  coherence        Coherence? // basic | good | excellent
+  tone             Tone? // professional | casual | formal | very poor
   aiFeedback       String? // AI-generated feedback
   timeTaken        Int? // time taken in seconds
   essayContent     String? // curated/correct essay content

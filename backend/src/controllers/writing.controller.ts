@@ -3,6 +3,7 @@ import { createEssayChallengeSchema } from "../Validators/essayChallenge.validat
 import { prisma } from "../../lib/prisma";
 import z from 'zod';
 import { createEmailChallengeSchema } from "../Validators/emailChallenge.validator";
+import { submitEssaySchema } from "../Validators/essaySubmission.schema";
 
 /* ======================================================================= */
 /*                               TEST MODE                                  */
@@ -61,11 +62,82 @@ export async function fetchPracticeChallengeReport(req: Request, res: Response) 
 // 
 
 // Submit the task 
+/**
+ * User submits an essay challenge
+ * ✅ Case A: User submits / auto-submit
 
+Store essay result with:
+
+evaluationStatus: "pending"
+
+
+Redirect user to:
+
+/essay/result/:resultId
+
+Your result page must fetch by resultId, not regenerate.
+
+GET /api/essay-results/:resultId
+
+Option 1: Auto retry (recommended)
+
+Retry 2–3 times in background
+
+Exponential backoff
+
+Option 2: Manual retry (admin/user)
+POST /api/essay-results/:id/retry
+
+ */
 export async function submitEssayChallenge(req: Request, res: Response) {
     try {
         // validate the req.body
-        
+        const parsedResult = submitEssaySchema.safeParse(req.body);
+
+        if (!parsedResult.success) {
+            return res.status(400).json({
+                message: "Invalid submission data",
+            });
+        }
+
+        const { questionId, userEssay, timeTaken } = parsedResult.data;
+
+        // extract userId from auth middleware 
+        // const{userId} = req.user.id;
+        //For temporary
+        const userId = 7;
+
+        // 3️⃣ Check if essay question exists
+        const question = await prisma.essayQuestion.findUnique({
+            where: { id: questionId },
+        });
+
+        if (!question) {
+            return res.status(404).json({
+                message: "Essay challenge not found",
+            });
+        }
+
+        // store initial submission (evaluation pending)
+        const submission = await prisma.essayResult.create({
+            data: {
+                userId,
+                questionId,
+                userEssay,
+                timeTaken,
+                evaluationStatus: "pending",
+            }
+        })
+
+        //Trigger evaluation
+        //This is where LLM will process the task
+        // evaluateEssayAsync(submission.id)
+
+        return res.status(201).json({
+            message: "Essay submitted successfully. Evaluation in progress",
+            submissionId: submission.id
+        })
+
     } catch (error) {
         console.error("Error in submition of essay challenge : ", error);
         return res.status(500).json({
