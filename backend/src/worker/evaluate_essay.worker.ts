@@ -1,5 +1,7 @@
 import { Response, Request } from "express";
 import { prisma } from "../../lib/prisma"
+import { evaluateEssayWithGemini } from "../services/essayEvaluation.service";
+import { EvaluateEssayParams } from "../types/types";
 
 const MAX_RETIES = 3;
 
@@ -19,7 +21,7 @@ export async function evaluateEssay(resultId: number, retryCount: number) {
             where: { id: result.questionId }
         })
         if (!challenge) {
-            throw new Error("Challenge not found")
+            throw new Error("Challenge not found");
         }
 
         // mark as processing 
@@ -30,10 +32,18 @@ export async function evaluateEssay(resultId: number, retryCount: number) {
             },
         });
 
-        // now call AI to process and evaluate the result 
-        //prompts--
-        // const aiResult = await callEssayEvaluationLLM(prompt);
 
+
+        const parameters: EvaluateEssayParams = {
+            problemStatement: challenge.problemStatement,
+            essay: result.userEssay,
+            keywords: challenge.evaluationCriteriaKeywords,
+            category: challenge.category,
+            difficulty: challenge.difficultyLevel,
+            expectedWordCount: challenge.requiredWordCount
+        }
+
+        const aiResult = await evaluateEssayWithGemini(parameters);
         // save evaluation 
         await prisma.essayResult.update({
             where: { id: resultId },
