@@ -3,7 +3,7 @@ import { createEssayChallengeSchema } from "../Validators/essayChallenge.validat
 import { prisma } from "../../lib/prisma";
 import z from 'zod';
 import { createEmailChallengeSchema } from "../Validators/emailChallenge.validator";
-import { submitEssaySchema } from "../Validators/essaySubmission.schema";
+import { submitEmailSchema, submitEssaySchema } from "../Validators/essaySubmission.schema";
 import { evaluateEssay } from "../worker/evaluate_essay.worker";
 
 /* ======================================================================= */
@@ -263,6 +263,7 @@ export async function submitEssayChallenge(req: Request, res: Response) {
         // const{userId} = req.user.id;
         //For temporary
         // user id in profile reference to id of that documents 
+        // temporarily
         const userId = 7; // 
 
         // 3️⃣ Check if essay question exists
@@ -907,7 +908,66 @@ export async function destroyEssayChallenge(req: Request, res: Response) {
 
 //---------------------Email-------------------------------------------------------------------------------------------
 
+// Implementing the controller to handle the submisson,fetching result and retry if failed
 
+// api/v1/email/submit
+export async function submitEmailChallenge(req: Request, res: Response) {
+    try {
+        // 1️⃣ Validate request body
+        const parsedResult = submitEmailSchema.safeParse(req.body);
+
+        if (!parsedResult.success) {
+            return res.status(400).json({
+                message: "Invalid submission data",
+            });
+        }
+
+
+        const { questionId, userEmail, timeTaken } = parsedResult.data;
+
+        // 2️⃣ Extract userId from auth middleware
+        // const userId = req.user.id;
+        // Temporary hardcoded user
+        const userId = 7;
+
+        // 3️⃣ Check if email challenge exists
+        const challenge = await prisma.emailChallenge.findUnique({
+            where: { id: questionId },
+        });
+
+        if (!challenge) {
+            return res.status(404).json({
+                message: "Email challenge not found",
+            });
+        }
+
+        // 4️⃣ Store initial submission (evaluation pending)
+        const submission = await prisma.emailResult.create({
+            data: {
+                userId,
+                challengeId: questionId,
+                userEmail,
+                timeTaken,
+                evaluationStatus: "pending",
+            },
+        });
+
+        // 5️⃣ Trigger evaluation (async / background)
+        // resultId: number, retryCount: number
+        // await evaluateEmail(submission.id, 0);
+
+        // 6️⃣ Immediate response
+        return res.status(201).json({
+            message: "Email submitted successfully. Evaluation in progress",
+            submissionId: submission.id,
+        });
+    } catch (error) {
+        console.error("Error in submission of email challenge:", error);
+        return res.status(500).json({
+            message: "Internal server error",
+        });
+    }
+}
 
 // Fetch only one email 
 export async function fetchOneEmail(req: Request, res: Response) {
