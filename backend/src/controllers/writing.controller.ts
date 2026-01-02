@@ -4,6 +4,7 @@ import { prisma } from "../../lib/prisma";
 import z from 'zod';
 import { createEmailChallengeSchema } from "../Validators/emailChallenge.validator";
 import { submitEssaySchema } from "../Validators/essaySubmission.schema";
+import { evaluateEssay } from "../worker/evaluate_essay.worker";
 
 /* ======================================================================= */
 /*                               TEST MODE                                  */
@@ -59,8 +60,164 @@ export async function fetchPracticeChallengeReport(req: Request, res: Response) 
 /* ======================================================================= */
 
 // ----------------Essay controller-------------------------------------------------
-// 
+// controller to retry the task evaluation 
+// api/v1/essay/submission/id/retry
 
+export async function retryEssaySubmission(req: Request, res: Response) {
+    try {
+        /**
+     * 1️⃣ Validate route params
+     */
+        const paramSchema = z.object({
+            id: z.coerce.number().int().positive(),
+        });
+
+        const parsedParams = paramSchema.safeParse(req.params);
+
+        if (!parsedParams.success) {
+            return res.status(400).json({
+                message: "Invalid submission id",
+            });
+        }
+
+        const { id } = parsedParams.data;
+
+        // consider the userId is coming from the request 
+        const userId = 4;
+
+        /**
+    * 3️⃣ Fetch submission with ownership check
+    */
+        const submission = await prisma.essayResult.findFirst({
+            where: {
+                id,
+                userId,
+            },
+            select: {
+                id: true,
+                evaluationStatus: true,
+            },
+        });
+
+        if (!submission) {
+            return res.status(404).json({
+                message: "Submission not found",
+            });
+        }
+
+        /**
+     * 4️⃣ Guard against invalid retry states
+     */
+        if (submission.evaluationStatus === "processing") {
+            return res.status(409).json({
+                message: "Evaluation is already in progress",
+            });
+        }
+
+        if (submission.evaluationStatus === "completed") {
+            return res.status(409).json({
+                message: "Evaluation already completed",
+            });
+        }
+
+
+        // Just call essay evalator 
+        // Here we call the LLM to evaluate the ans 
+        await evaluateEssay(submission.id, 0);
+
+        //return success message 
+        return res.status(202).json({
+            message: "Essay evaluation retry initiated",
+        });
+    } catch (error) {
+        console.log("Error in retry submissin : ", error);
+        return res.status(500).json({
+            message: "Internal server error"
+        });
+    }
+}
+
+// api end points to fetch the result 
+// api/v1/essay/result/id
+export async function fetchEssayResult(req: Request, res: Response) {
+    try {
+        ///valid the id parameters 
+        const paramSchema = z.object({
+            id: z.coerce.number().int().positive(),
+        });
+
+        const parsedParams = paramSchema.safeParse(req.params);
+
+        if (!parsedParams.success) {
+            return res.status(400).json({
+                message: "Invalid result id",
+            });
+        }
+
+        const { id } = parsedParams.data;
+
+        // let say assume that userId exist in 
+        // const userId = req?.user?.id 
+        const userId = 3;
+        /**
+      * 3️⃣ Fetch result with ownership check
+      */
+        const result = await prisma.essayResult.findFirst({
+            where: {
+                id,
+                userId, // 🔐 ensures user can only fetch their own result
+            },
+            select: {
+                id: true,
+                questionId: true,
+                userEssay: true,
+                overallScore: true,
+                keywordCoverage: true,
+                grammarAccuracy: true,
+                coherence: true,
+                tone: true,
+                aiFeedback: true,
+                timeTaken: true,
+                createdAt: true,
+                evaluationStatus: true
+            },
+        });
+
+
+        if (!result) {
+            return res.status(404).json({
+                message: "Result not found"
+            });
+        }
+
+        /**
+         * Handle evaluation still in progress
+         * 
+         */
+        if (result.evaluationStatus !== "completed" && result.evaluationStatus !== "failed") {
+            return res.status(202).json({
+                message: "Evaluation in progress",
+                data: result
+            })
+        }
+
+        //return the success message with data
+        return res.status(200).json({
+            data: result
+        })
+    } catch (error: any) {
+        console.log("Error in fetching results : ", error);
+        return res.status(500).json({
+            message: "Internal server error"
+        });
+    }
+}
+
+
+// and api end points to retry if fails 
+
+
+// 
 // Submit the task 
 /**
  * User submits an essay challenge
@@ -105,7 +262,8 @@ export async function submitEssayChallenge(req: Request, res: Response) {
         // extract userId from auth middleware 
         // const{userId} = req.user.id;
         //For temporary
-        const userId = 7;
+        // user id in profile reference to id of that documents 
+        const userId = 7; // 
 
         // 3️⃣ Check if essay question exists
         const question = await prisma.essayQuestion.findUnique({
@@ -132,6 +290,13 @@ export async function submitEssayChallenge(req: Request, res: Response) {
         //Trigger evaluation
         //This is where LLM will process the task
         // evaluateEssayAsync(submission.id)
+        //resultId: number, retryCount: number
+        // const parameters: { resultId: Number, retryCount: Number } = {
+        //     resultId: submission.id,
+        //     retryCount: 0
+        // }
+        // Here we call the LLM to evaluate the ans 
+        await evaluateEssay(submission.id, 0);
 
         return res.status(201).json({
             message: "Essay submitted successfully. Evaluation in progress",
@@ -742,6 +907,8 @@ export async function destroyEssayChallenge(req: Request, res: Response) {
 
 //---------------------Email-------------------------------------------------------------------------------------------
 
+
+
 // Fetch only one email 
 export async function fetchOneEmail(req: Request, res: Response) {
     try {
@@ -853,7 +1020,7 @@ export async function fetchOneEmailAdmin(req: Request, res: Response) {
 
 // Fetech all the records of the email challenge
 /**
- * Fetch all email challenges (Admin / User)
+ * Fetch all email challenges ( User)
  * Supports pagination, cursor-based pagination, filters
  */
 // for user side 

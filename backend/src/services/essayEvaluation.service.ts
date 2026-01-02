@@ -78,6 +78,8 @@ export async function evaluateEssayWithGemini({
     try {
         return JSON.parse(cleaned);
     } catch (error) {
+        // Here is the doubt 
+        // if there is any error then what should happen and what I will return 
         console.error("Gemini JSON parse failed:", cleaned);
         throw new Error("Invalid AI response format");
     }
