@@ -5,6 +5,7 @@ import z from 'zod';
 import { createEmailChallengeSchema } from "../Validators/emailChallenge.validator";
 import { submitEmailSchema, submitEssaySchema } from "../Validators/essaySubmission.schema";
 import { evaluateEssay } from "../worker/evaluate_essay.worker";
+import { evaluateEmail } from "../worker/evaluate_email.worker";
 
 /* ======================================================================= */
 /*                               TEST MODE                                  */
@@ -909,7 +910,171 @@ export async function destroyEssayChallenge(req: Request, res: Response) {
 //---------------------Email-------------------------------------------------------------------------------------------
 
 // Implementing the controller to handle the submisson,fetching result and retry if failed
+//retry if failed 
 
+// controller to retry email evaluation
+// api/v1/email/submission/:id/retry
+
+export async function retryEmailSubmission(req: Request, res: Response) {
+    try {
+        /**
+        * 1️⃣ Validate route params
+        */
+        const paramSchema = z.object({
+            id: z.coerce.number().int().positive(),
+        });
+
+        const parsedParams = paramSchema.safeParse(req.params);
+
+        if (!parsedParams.success) {
+            return res.status(400).json({
+                message: "Invalid submission id",
+            });
+        }
+
+        const { id } = parsedParams.data;
+
+        // extract userId from auth middleware
+        // const userId = req.user.id;
+        const userId = 4;
+
+        /**
+         * Fetch email submission with ownership check 
+         */
+
+        const submission = await prisma.emailResult.findFirst({
+            where: {
+                id,
+                userId,
+            },
+            select: {
+                id: true,
+                evaluationStatus: true,
+            },
+        });
+
+        if (!submission) {
+            return res.status(404).json({
+                message: "Submission not found",
+            });
+        }
+        /**
+         * Guard against invalid retry states 
+         * 
+         */
+
+        if (submission.evaluationStatus === "processing") {
+            return res.status(409).json({
+                message: "Evaluation is already in progress",
+            });
+        }
+
+        if (submission.evaluationStatus === "completed") {
+            return res.status(409).json({
+                message: "Evaluation already completed",
+            });
+        }
+
+        // Trigger evaluation retry 
+
+        await evaluateEmail(submission.id, 0);
+        return res.status(202).json({
+            message: "Email evaluation retry initiated",
+        })
+
+    } catch (error) {
+        console.error("Error in retry email submission :", error);
+        return res.status(500).json({
+            message: "Internal server error",
+        });
+    }
+}
+
+
+// this controller will fetch the generated result 
+// api end points to fetch the email evaluation result
+// api/v1/email/result/:id
+
+export async function fetchEmailResult(req: Request, res: Response) {
+    try {
+        // 1️⃣ Validate route params
+        const paramSchema = z.object({
+            id: z.coerce.number().int().positive(),
+        });
+
+        const parsedParams = paramSchema.safeParse(req.params);
+
+        if (!parsedParams.success) {
+            return res.status(400).json({
+                message: "Invalid result id",
+            });
+        }
+
+        const { id } = parsedParams.data;
+
+        // 2️⃣ Extract userId (temporary hardcoded)
+        // const userId = req.user.id;
+        const userId = 3;
+
+        /**
+        * 3️⃣ Fetch email result with ownership check
+        */
+        const result = await prisma.emailResult.findFirst({
+            where: {
+                id,
+                userId, // 🔐 user can access only their own result
+            },
+            select: {
+                id: true,
+                challengeId: true,
+                userEmail: true,
+                overallScore: true,
+                keywordCoverage: true,
+                grammarAccuracy: true,
+                clarityStructureComment: true,
+                toneAppropriateness: true,
+                aiFeedback: true,
+                timeTaken: true,
+                createdAt: true,
+                evaluationStatus: true,
+            },
+        });
+
+        if (!result) {
+            return res.status(404).json({
+                message: "Result not found",
+            });
+        }
+
+        /**
+        * 4️⃣ Handle evaluation still in progress
+        */
+        if (
+            result.evaluationStatus !== "completed" &&
+            result.evaluationStatus !== "failed"
+        ) {
+            return res.status(202).json({
+                message: "Evaluation in progress",
+                data: result,
+            });
+        }
+
+
+        // 5️⃣ Final evaluated response
+        return res.status(200).json({
+            data: result,
+        });
+
+    } catch (error) {
+        console.error("Error in fetching email result:", error);
+        return res.status(500).json({
+            message: "Internal server error",
+        });
+    }
+}
+
+// This controller will handle the submission of the email 
+// and will trigure the email evaluator 
 // api/v1/email/submit
 export async function submitEmailChallenge(req: Request, res: Response) {
     try {
@@ -954,7 +1119,7 @@ export async function submitEmailChallenge(req: Request, res: Response) {
 
         // 5️⃣ Trigger evaluation (async / background)
         // resultId: number, retryCount: number
-        // await evaluateEmail(submission.id, 0);
+        await evaluateEmail(submission.id, 0);
 
         // 6️⃣ Immediate response
         return res.status(201).json({
