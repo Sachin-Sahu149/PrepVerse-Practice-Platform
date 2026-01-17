@@ -4,6 +4,121 @@ import { createTopicSchema } from "../Validators/topic.validator";
 import { createQuestionSchema, destroyQuestionParamsSchema } from "../Validators/question.validator";
 import z from "zod";
 
+
+// Here the controller to submit the questions while practicing the questions 
+// /api/v1/practice/submit/:topicId/:questionId,
+// Payload 
+/**
+ * --selected option 
+ * -- taken time 
+ * response with success 
+ * // If they have already selected the questions and now they are selectiing the other options they just change 
+ * the selected options only if they already submitted 
+ * Bu the problem is that they have already solved this questions, so do not overlap with this one 
+ * To ensure this things work correctly just 
+ * // show the submit button and, else questions will be submitted 
+ * 
+ *  So, when user will come to platform to practice the questions, even if he has already solved that questions 
+ *  they do not show right option 
+ * 
+ */
+export async function submitTheQuestion(req: Request, res: Response) {
+    try {
+        // get the payload 
+        //payload, selected option and takentime 
+        // topicId,questionId,selectedOption,spentTime,
+        const bodySchema = z.object({
+            // topicId: z.coerce.number().int().positive(),
+            // questionId: z.coerce.number().int().positive(),
+            selectedOption: z.coerce.number().int().nonnegative(),
+            // each question can have at most 5 minutes 
+            timeTaken: z.coerce.number().int().min(0).max(300),
+        });
+
+        // Now validate the body 
+        const parsedBody = bodySchema.safeParse(req.body);
+
+        if (!parsedBody.success) {
+            return res.status(400).json({
+                message: "Invalid data provided",
+            });
+        }
+
+        // destructuring the parsed body data 
+        const { selectedOption, timeTaken } = parsedBody.data;
+
+        // 1️⃣ Validate questionId param
+        const paramSchema = z.object({
+            questionId: z
+                .number()
+                .int()
+                .positive(),
+            topicId: z
+                .number()
+                .int()
+                .positive(),
+        });
+
+        const parsedParams = paramSchema.safeParse({
+            questionId: Number(req.params.questionId),
+            topicId: Number(req.params.topicId),
+        });
+
+        if (!parsedParams.success) {
+            return res.status(400).json({
+                message: "Invalid question id or topicId",
+                // errors: parsed.error.flatten().fieldErrors,
+            });
+        }
+
+        const { questionId, topicId } = parsedParams.data;
+
+        // validate that the question existance
+        const foundQuestion = await prisma.question.findUnique({
+            where: { id: questionId }
+        });
+
+        if (!foundQuestion) {
+            return res.status(404).json({
+                message: "Question not found",
+            });
+        }
+
+        if (foundQuestion.topicId !== topicId) {
+            return res.status(400).json({
+                message: "Question does not belong to the given topic",
+            });
+        }
+
+        const isCorrect = selectedOption === foundQuestion.correctOption;
+
+
+        // Now create new Entry for PracticeSessionQuestion
+        const newEntry = await prisma.practiceSessionQuestion.create({
+            data: {
+                topicId: topicId,
+                questionId: questionId,
+                selectedOption: selectedOption,
+                timeSpent: timeTaken,
+                isCorrect: isCorrect,
+            },
+        });
+
+        // response with success message 
+        return res.status(201).json({
+            message: "Question submitted successfully",
+            data: {
+                id: newEntry.id,
+                isCorrect: newEntry.isCorrect,
+            }
+        })
+
+    } catch (error) {
+        console.log("Error in submitTheQuestion controller : ", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+}
+
 /**
  * GET /topics
  */

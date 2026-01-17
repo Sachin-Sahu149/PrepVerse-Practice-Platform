@@ -42,18 +42,19 @@ enum BadgeType {
 }
 
 model Topic {
-  id                     Int               @id @default(autoincrement())
-  name                   String
-  category               Category
-  icon                   String
-  description            String?
-  difficultyDistribution Json // stores { easy: Int, medium: Int, hard: Int }
-  totalQuestion          Int
-  createdAt              DateTime          @default(now())
-  updatedAt              DateTime          @updatedAt
-  profiles               Profile[] // relation: profiles that prefer this topic
-  questions              Question[] // relation: questions belonging to this topic
-  practiceSessions       PracticeSession[] // relation: all practice sessions for this topic
+  id                       Int                       @id @default(autoincrement())
+  name                     String
+  category                 Category
+  icon                     String
+  description              String?
+  difficultyDistribution   Json // stores { easy: Int, medium: Int, hard: Int }
+  totalQuestion            Int
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  profiles                 Profile[] // relation: profiles that prefer this topic
+  questions                Question[] // relation: questions belonging to this topic
+  practiceSessions         PracticeSession[] // relation: all practice sessions for this topic
+  practiceSessionQuestions PracticeSessionQuestion[]
 }
 
 enum Category {
@@ -79,21 +80,21 @@ model EmailChallenge {
 
 // ✅ Email Results (user submissions)
 model EmailResult {
-  id                      Int                 @id @default(autoincrement()) // unique identifier for result
+  id                      Int                  @id @default(autoincrement()) // unique identifier for result
   userId                  Int // FK: user who submitted
-  user                    User                @relation(fields: [userId], references: [id])
+  user                    User                 @relation(fields: [userId], references: [id])
   challengeId             Int // FK: email challenge attempted
-  challenge               EmailChallenge      @relation(fields: [challengeId], references: [id])
+  challenge               EmailChallenge       @relation(fields: [challengeId], references: [id])
   userEmail               String // email written by user
-  overallScore            Int ?// overall score (e.g., 85)
+  overallScore            Int? // overall score (e.g., 85)
   grammarAccuracy         GrammarAccuracy? // excellent | good | average | poor
   keywordCoverage         Json? // { matchedKeywords: [...], percentage: 0.55 }
   clarityStructureComment String? // comment on clarity/structure
   toneAppropriateness     ToneAppropriateness? // excellent | acceptable | unprofessional
   aiFeedback              String? // AI-generated feedback
   timeTaken               Int? // time spent in seconds
-  createdAt               DateTime            @default(now()) // submission timestamp
-  evaluationStatus EvaluationStatus
+  createdAt               DateTime             @default(now()) // submission timestamp
+  evaluationStatus        EvaluationStatus
 }
 
 // ✅ Enum for email categories
@@ -189,13 +190,15 @@ enum Tone {
   very_poor
 }
 
+// create shcema for set of questions to take test or just manage in some way 
+
 // ✅ Tracks each practice or test session
 model PracticeSession {
-  id               Int                       @id @default(autoincrement()) // unique identifier for each session
+  id               Int          @id @default(autoincrement()) // unique identifier for each session
   userId           Int // FK: user who attempted
-  user             User                      @relation(fields: [userId], references: [id])
+  user             User         @relation(fields: [userId], references: [id])
   topicId          Int // FK: topic practiced/tested
-  topic            Topic                     @relation(fields: [topicId], references: [id])
+  topic            Topic        @relation(fields: [topicId], references: [id])
   practiceType     PracticeType // practice or test
   totalQuestions   Int // total attempted questions
   correctAnswers   Int // number of correct answers
@@ -207,21 +210,27 @@ model PracticeSession {
   completedAt      DateTime? // session completion time
   totalTimeSpent   Int // total time spent (seconds)
   xpEarned         Int // XP earned in this session
-  questions        PracticeSessionQuestion[] // relation: all questions attempted in this session
-  createdAt        DateTime                  @default(now()) // record creation timestamp
-  updatedAt        DateTime                  @updatedAt // last updated timestamp
+  // questions        PracticeSessionQuestion[] // relation: all questions attempted in this session
+  createdAt        DateTime     @default(now()) // record creation timestamp
+  updatedAt        DateTime     @updatedAt // last updated timestamp
 }
 
+// I have created this schmea to practice each questions separately
+// and build the set of questions to take test, that I will handle later once developed this part 
 // ✅ Tracks each question attempted inside a session
 model PracticeSessionQuestion {
-  id             Int             @id @default(autoincrement()) // unique identifier for each attempted question
-  sessionId      Int // FK: linked to PracticeSession
-  session        PracticeSession @relation(fields: [sessionId], references: [id])
+  id             Int      @id @default(autoincrement()) // unique identifier for each attempted question
+  // sessionId      Int // FK: linked to PracticeSession
+  // session        PracticeSession @relation(fields: [sessionId], references: [id])
+  topicId        Int // FK: topic practiced/tested
+  topic          Topic    @relation(fields: [topicId], references: [id])
   questionId     Int // FK: linked to Question
-  question       Question        @relation(fields: [questionId], references: [id])
+  question       Question @relation(fields: [questionId], references: [id])
   selectedOption Int? // option chosen by user
   isCorrect      Boolean // whether selected answer was correct
   timeSpent      Int // time spent on this question (seconds)
+  createdAt      DateTime @default(now()) // record creation timestamp
+  updatedAt      DateTime @updatedAt // last updated timestamp
 }
 
 // ✅ Enum for practice type
