@@ -325,3 +325,113 @@ export async function updateFeedbackReview(req: Request, res: Response) {
         });
     }
 }
+
+
+export async function deleteFeedbackById(req: Request, res: Response) {
+    try {
+        // validate the id 
+        const paramSchema = z.object({
+            feedbackId: z.coerce.number().int().nonnegative(),
+        })
+
+        // parse 
+        const parsedParam = paramSchema.safeParse({
+            feedbackId: Number(req.params.feedbackId),
+        });
+
+        if (!parsedParam.success) {
+            return res.status(400).json({
+                message: "Invalid feedback id ",
+            });
+        }
+
+        // destructure the parsedParams 
+        const { feedbackId } = parsedParam.data;
+
+
+        // Find the feedback Id 
+        const feedback = await prisma.feedback.findUnique({
+            where: { id: feedbackId },
+        });
+
+        if (!feedback) {
+            return res.status(404).json({
+                message: "Feedback not found",
+            });
+        }
+
+        // now update the review 
+        const deletedFeedback = await prisma.feedback.delete({
+            where: { id: feedbackId }
+        });
+
+        console.log("deletedFeedback : ", deletedFeedback);
+
+        // send the success message
+        return res.status(200).json({
+            message: "Feedback deleted successfully",
+            data: deletedFeedback
+        })
+
+    } catch (error) {
+        console.error("Error in deleteFeedback controller : ", error);
+        return res.status(500).json({
+            message: "Internal server error",
+        });
+    }
+}
+
+// deleteFeedbackByUserId
+
+export async function deleteFeedbackByUserId(req: Request, res: Response) {
+    try {
+        // validate the userId 
+        const paramSchema = z.object({
+            userId: z.coerce.number().int().nonnegative(),
+        })
+
+        // parse 
+        const parsedParam = paramSchema.safeParse({
+            userId: Number(req.params.userId),
+        });
+
+        if (!parsedParam.success) {
+            return res.status(400).json({
+                message: "Invalid user id ",
+            });
+        }
+
+        // destructure the parsedParams 
+        const { userId } = parsedParam.data;
+
+        // user existance 
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+        })
+
+        //If not found 
+        if (!user) {
+            return res.status(404).json({
+                message: "User not found",
+            });
+        }
+
+        //find out all the feedback associated with current userId 
+        const feedbacks = await prisma.feedback.deleteMany({
+            where: { userId: userId },
+        });
+
+
+        // return the feedbacks even if user has not made any submission yet
+        // empty 
+        return res.status(200).json({
+            message: "Deleted successfully",
+            data: feedbacks,
+        })
+    } catch (error) {
+        console.error("Error in fetchAllFeedback : ", error);
+        return res.status(500).json({
+            message: "Internal server error",
+        })
+    }
+}

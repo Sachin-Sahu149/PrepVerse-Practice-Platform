@@ -7,6 +7,11 @@ datasource db {
   provider = "postgresql"
 }
 
+
+//npx prisma migrate dev --name init
+//npx prisma migrate dev --name update_schema && npx prisma generate
+// Resume the work, work on to handle Notifictioans,AI recomendation,progress report 
+
 model User {
   id                Int                @id @default(autoincrement())
   email             String             @unique
@@ -272,6 +277,7 @@ model Feedback {
   content    String // feedback message
   category   FeedbackCategory // type of feedback: bug, suggestion, appreciation
   createdAt  DateTime         @default(now()) // time when feedback was created
+  updatedAt DateTime         @updatedAt // last updated timestamp (modifications to message)
   rating     Int? // rating given by user to the platform
   isReviewed Boolean          @default(false) // whether feedback has been reviewed
 }

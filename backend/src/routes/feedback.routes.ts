@@ -1,5 +1,5 @@
 import Router from "express"
-import { fetchAllFeedback, fetchFeedbackById, fetchFeedbackByUserId, submitFeedback, updateFeedbackReview } from "../controllers/feedback.controller";
+import { deleteFeedbackById, deleteFeedbackByUserId, fetchAllFeedback, fetchFeedbackById, fetchFeedbackByUserId, submitFeedback, updateFeedbackReview } from "../controllers/feedback.controller";
 
 const router = Router();
 
@@ -97,7 +97,7 @@ Trends
 Moderation queue
 
 */
-router.get("/feedback",fetchAllFeedback)
+router.get("/feedback", fetchAllFeedback)
 
 /*
 5️⃣ Mark feedback as reviewed (ADMIN)
@@ -109,14 +109,12 @@ Body
 {
  "isReviewed": true
 }
+(or no body at all, just mark true)
  */
 
-router.patch("/feedback/:feedbackId/review",updateFeedbackReview);
+router.patch("/feedback/:feedbackId/review", updateFeedbackReview);
 
 /*
-
-
-(or no body at all, just mark true)
 
 6️⃣ Delete one feedback by ID (USER / ADMIN)
 DELETE /api/v1/feedback/:feedbackId
@@ -127,6 +125,11 @@ Rules
 User → can delete their own feedback
 
 Admin → can delete any
+*/
+router.delete("/feedback/:feedbackId", deleteFeedbackById);
+
+
+/*
 
 7️⃣ Delete all feedback of a user (ADMIN only)
 DELETE /api/v1/feedback/user/:userId
@@ -140,3 +143,5 @@ Abuse / test account cleanup
 * 
 * 
 */
+
+router.delete("/feedback/user/:userId", deleteFeedbackByUserId);
