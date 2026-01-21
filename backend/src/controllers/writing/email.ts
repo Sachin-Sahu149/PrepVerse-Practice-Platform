@@ -10,7 +10,6 @@ import { createEmailChallengeSchema } from "../../Validators/emailChallenge.vali
 
 // Implementing the controller to handle the submisson,fetching result and retry if failed
 //retry if failed 
-
 // controller to retry email evaluation
 // api/v1/email/submission/:id/retry
 

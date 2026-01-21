@@ -40,6 +40,7 @@ export async function submitFeedback(req: Request, res: Response) {
                 message: "Invalid data",
             });
         }
+        // Rating is required and just change, status from optional to required in prisma schema
         // destructure 
         const { content, rating, category } = parsedBody.data;
         // get the userId through auth 
@@ -92,59 +93,121 @@ export async function submitFeedback(req: Request, res: Response) {
 //   "createdAt": "2026-01-17T..."
 // }
 
+// export async function fetchFeedbackById(req: Request, res: Response) {
+//     try {
+//         // validate the id 
+//         const paramSchema = z.object({
+//             feedbackId: z.coerce.number().int().nonnegative(),
+//         })
+
+//         // parse 
+//         const parsedParam = paramSchema.safeParse({
+//             feedbackId: Number(req.params.feedbackId),
+//         });
+
+//         if (!parsedParam.success) {
+//             return res.status(400).json({
+//                 message: "Invalid feedback id ",
+//             });
+//         }
+
+//         // destructure the parsedParams 
+//         const { feedbackId } = parsedParam.data;
+
+//         // check existance 
+//         const feedback = await prisma.feedback.findUnique({
+//             where: { id: feedbackId },
+//             select: {
+//                 content: true,
+//                 isReviewed: true,
+//                 category: true,
+//                 userId: true,
+//                 id: true,
+//                 rating: true,
+//                 createdAt: true,
+//                 // updatedAt:true,
+//             }
+//         });
+
+//         if (!feedback) {
+//             return res.status(404).json({
+//                 message: "Feedback not found"
+//             });
+//         }
+
+//         // return actual data if exist 
+//         return res.status(200).json({
+//             data: feedback,
+//         })
+//     } catch (error) {
+//         console.error("Error in fetchFeedbackById controller : ", error);
+//         return res.status(500).json({
+//             message: "Internal server error",
+//         });
+//     }
+// }
 export async function fetchFeedbackById(req: Request, res: Response) {
     try {
-        // validate the id 
         const paramSchema = z.object({
-            feedbackId: z.coerce.number().int().nonnegative(),
-        })
+            feedbackId: z.coerce.number().int().positive(),
+        });
 
-        // parse 
         const parsedParam = paramSchema.safeParse({
             feedbackId: Number(req.params.feedbackId),
         });
 
         if (!parsedParam.success) {
             return res.status(400).json({
-                message: "Invalid feedback id ",
+                message: "Invalid feedback id",
             });
         }
 
-        // destructure the parsedParams 
+        // 🔐 ADMIN AUTH CHECK (TEMP)
+        // Replace with real middleware later
+        const currentUser = {
+            id: 1,
+            role: "ADMIN", // must be ADMIN
+        };
+
+        if (currentUser.role !== "ADMIN") {
+            return res.status(403).json({
+                message: "Access denied",
+            });
+        }
+
         const { feedbackId } = parsedParam.data;
 
-        // check existance 
         const feedback = await prisma.feedback.findUnique({
             where: { id: feedbackId },
             select: {
-                content: true,
-                isReviewed: true,
-                category: true,
-                userId: true,
                 id: true,
+                content: true,
+                category: true,
                 rating: true,
+                isReviewed: true,
+                userId: true,
                 createdAt: true,
-                // updatedAt:true,
-            }
+            },
         });
 
         if (!feedback) {
             return res.status(404).json({
-                message: "Feedback not found"
+                message: "Feedback not found",
             });
         }
 
-        // return actual data if exist 
         return res.status(200).json({
+            message: "Feedback fetched successfully",
             data: feedback,
-        })
+        });
     } catch (error) {
-        console.error("Error in fetchFeedbackById controller : ", error);
+        console.error("Error in fetchFeedbackById controller:", error);
         return res.status(500).json({
             message: "Internal server error",
         });
     }
 }
+
 
 // 3️⃣ Get all feedback of a specific user (USER / ADMIN)
 // GET /api/v1/feedback/user/:userId
@@ -157,6 +220,21 @@ export async function fetchFeedbackById(req: Request, res: Response) {
 
 export async function fetchFeedbackByUserId(req: Request, res: Response) {
     try {
+
+        // Admin auth check (temporary )
+        // Replace with real admin middleware 
+
+        const currentUser = {
+            id: 1,
+            role: "ADMIN",
+        };
+
+        if (currentUser.role !== "ADMIN") {
+            return res.status(403).json({
+                message: "Access denied",
+            });
+        }
+
         // validate the userId 
         const paramSchema = z.object({
             userId: z.coerce.number().int().nonnegative(),
@@ -176,21 +254,45 @@ export async function fetchFeedbackByUserId(req: Request, res: Response) {
         // destructure the parsedParams 
         const { userId } = parsedParam.data;
 
-        // user existance 
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-        })
+        /**
+         * 
+         * ❌ 3. User existence check is unnecessary
+            This part:
+            const user = await prisma.user.findUnique(...)
+            is wasted DB work.
+            Why?
+            If user has no feedback → return []
+            If userId doesn’t exist → still []
+            Admins don’t need a 404 here.
+            This is cleaner and faster.
+         */
 
-        //If not found 
-        if (!user) {
-            return res.status(404).json({
-                message: "User not found",
-            });
-        }
+        // // user existance 
+        // const user = await prisma.user.findUnique({
+        //     where: { id: userId },
+        // })
+
+        // //If not found 
+        // if (!user) {
+        //     return res.status(404).json({
+        //         message: "User not found",
+        //     });
+        // }
 
         //find out all the feedback associated with current userId 
         const feedbacks = await prisma.feedback.findMany({
             where: { userId: userId },
+            select: {
+                id: true,
+                content: true,
+                category: true,
+                rating: true,
+                isReviewed: true,
+                createdAt: true,
+            },
+            orderBy: {
+                createdAt: "desc",
+            },
         });
 
 
@@ -200,10 +302,10 @@ export async function fetchFeedbackByUserId(req: Request, res: Response) {
             data: feedbacks,
         })
     } catch (error) {
-        console.error("Error in fetchAllFeedback : ", error);
+        console.error("Error in fetchFeedbackByUserId:", error);
         return res.status(500).json({
             message: "Internal server error",
-        })
+        });
     }
 }
 
@@ -222,29 +324,76 @@ Moderation queue
 */
 export async function fetchAllFeedback(req: Request, res: Response) {
     try {
-        // simply fetch all feedback based one query if provided 
-        // Resume from this point onwards
-        // fetch the query parameters first 
-        const { category, reviewed } = req.query;
-        // Log the category and reviewed to understand the types of variables 
-        const query: any = {};
-        if (category !== undefined && category !== null) {
-            query.category = category;
+        // Admin auth check Temp 
+        // Replace with real middleware 
+
+        const currentUser = {
+            id: 1,
+            role: "ADMIN",
+        };
+
+        if (currentUser.role !== "ADMIN") {
+            return res.status(403).json({
+                message: "Access denied",
+            });
         }
 
-        if (reviewed !== undefined && reviewed !== null) {
-            query.isReviewed = reviewed;
+
+        // ✅ Validate query params
+        const querySchema = z.object({
+            category: z.enum(["bug", "suggestion", "appreciation"]).optional(),
+            reviewed: z.enum(["true", "false"]).optional(),
+        });
+
+        const parsedQuery = querySchema.safeParse(req.query);
+
+        if (!parsedQuery.success) {
+            return res.status(400).json({
+                message: "Invalid query parameters",
+                errors: parsedQuery.error.flatten().fieldErrors,
+            });
+        }
+
+        const { category, reviewed } = parsedQuery.data;
+
+        // Build prisma filter safely 
+        const where: {
+            category?: "bug" | "suggestion" | "appreciation";
+            isReviewed?: boolean
+        } = {};
+
+        if (category) {
+            where.category = category;
+        }
+
+        if (reviewed !== undefined) {
+            where.isReviewed = reviewed === "true";
         }
 
         // Fetch all the feedback 
         const feedbacks = await prisma.feedback.findMany({
-            where: query
+            where,
+            select: {
+                id: true,
+                content: true,
+                category: true,
+                rating: true,
+                isReviewed: true,
+                userId: true,      // useful for moderation
+                createdAt: true,
+            },
+            orderBy: {
+                createdAt: "desc",
+            },
+
         });
 
         // return scuccess message with data 
         return res.status(200).json({
-            data: feedbacks
-        })
+            message: "Feedback fetched successfully",
+            count: feedbacks.length,
+            data: feedbacks,
+        });
 
     } catch (error) {
         console.error("Error in fetchAllFeedback controller : ", error);
@@ -270,10 +419,23 @@ Body
 
 export async function updateFeedbackReview(req: Request, res: Response) {
     try {
+        // 🔐 ADMIN AUTH CHECK (TEMP)
+        // Replace with real middleware
+        const currentUser = {
+            id: 1,
+            role: "ADMIN",
+        };
+
+        if (currentUser.role !== "ADMIN") {
+            return res.status(403).json({
+                message: "Access denied",
+            });
+        }
+
         // validate the feedbackId and then 
         // validate the id 
         const paramSchema = z.object({
-            feedbackId: z.coerce.number().int().nonnegative(),
+            feedbackId: z.coerce.number().int().positive(),
         })
 
         // parse 
@@ -293,6 +455,9 @@ export async function updateFeedbackReview(req: Request, res: Response) {
         // Find the feedback Id 
         const feedback = await prisma.feedback.findUnique({
             where: { id: feedbackId },
+            select: {
+                isReviewed: true,
+            }
         });
 
         if (!feedback) {
@@ -305,7 +470,6 @@ export async function updateFeedbackReview(req: Request, res: Response) {
         const updatedFeedback = await prisma.feedback.update({
             where: { id: feedbackId },
             data: {
-                ...feedback,
                 isReviewed: !feedback.isReviewed
             }
         });
@@ -329,9 +493,21 @@ export async function updateFeedbackReview(req: Request, res: Response) {
 
 export async function deleteFeedbackById(req: Request, res: Response) {
     try {
+        // 🔐 ADMIN AUTH CHECK (replace with middleware)
+        const currentUser = {
+            id: 1,
+            role: "ADMIN",
+        };
+
+        if (currentUser.role !== "ADMIN") {
+            return res.status(403).json({
+                message: "Access denied",
+            });
+        }
+
         // validate the id 
         const paramSchema = z.object({
-            feedbackId: z.coerce.number().int().nonnegative(),
+            feedbackId: z.coerce.number().int().positive(),
         })
 
         // parse 
@@ -349,32 +525,40 @@ export async function deleteFeedbackById(req: Request, res: Response) {
         const { feedbackId } = parsedParam.data;
 
 
-        // Find the feedback Id 
-        const feedback = await prisma.feedback.findUnique({
+        // // Find the feedback Id 
+        // const feedback = await prisma.feedback.findUnique({
+        //     where: { id: feedbackId },
+        // });
+
+        // if (!feedback) {
+        //     return res.status(404).json({
+        //         message: "Feedback not found",
+        //     });
+        // }
+
+        // ✅ Delete directly (single DB call)
+        const deletedFeedback = await prisma.feedback.delete({
             where: { id: feedbackId },
+            select: {
+                id: true,
+            },
         });
 
-        if (!feedback) {
+        return res.status(200).json({
+            message: "Feedback deleted successfully",
+            data: deletedFeedback,
+        });
+
+    } catch (error: any) {
+
+        // Prisma record not found error 
+        if (error.code === "P2025") {
             return res.status(404).json({
                 message: "Feedback not found",
             });
         }
 
-        // now update the review 
-        const deletedFeedback = await prisma.feedback.delete({
-            where: { id: feedbackId }
-        });
-
-        console.log("deletedFeedback : ", deletedFeedback);
-
-        // send the success message
-        return res.status(200).json({
-            message: "Feedback deleted successfully",
-            data: deletedFeedback
-        })
-
-    } catch (error) {
-        console.error("Error in deleteFeedback controller : ", error);
+        console.error("Error in deleteFeedbackById controller:", error);
         return res.status(500).json({
             message: "Internal server error",
         });
@@ -385,6 +569,20 @@ export async function deleteFeedbackById(req: Request, res: Response) {
 
 export async function deleteFeedbackByUserId(req: Request, res: Response) {
     try {
+
+        // 🔐 ADMIN AUTH CHECK (replace with middleware)
+        const currentUser = {
+            id: 1,
+            role: "ADMIN",
+        };
+
+        if (currentUser.role !== "ADMIN") {
+            return res.status(403).json({
+                message: "Access denied",
+            });
+        }
+
+
         // validate the userId 
         const paramSchema = z.object({
             userId: z.coerce.number().int().nonnegative(),
@@ -404,32 +602,19 @@ export async function deleteFeedbackByUserId(req: Request, res: Response) {
         // destructure the parsedParams 
         const { userId } = parsedParam.data;
 
-        // user existance 
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-        })
-
-        //If not found 
-        if (!user) {
-            return res.status(404).json({
-                message: "User not found",
-            });
-        }
-
-        //find out all the feedback associated with current userId 
-        const feedbacks = await prisma.feedback.deleteMany({
-            where: { userId: userId },
+        // ✅ Delete all feedback for this user (single DB call)
+        const result = await prisma.feedback.deleteMany({
+            where: { userId },
         });
 
-
-        // return the feedbacks even if user has not made any submission yet
-        // empty 
         return res.status(200).json({
-            message: "Deleted successfully",
-            data: feedbacks,
-        })
+            message: "User feedback deleted successfully",
+            data: {
+                deletedCount: result.count,
+            },
+        });
     } catch (error) {
-        console.error("Error in fetchAllFeedback : ", error);
+        console.error("Error in deleteFeedbackByUserId controller:", error);
         return res.status(500).json({
             message: "Internal server error",
         })
