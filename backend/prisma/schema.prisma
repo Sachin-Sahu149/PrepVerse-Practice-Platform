@@ -7,25 +7,25 @@ datasource db {
   provider = "postgresql"
 }
 
-
 //npx prisma migrate dev --name init
 //npx prisma migrate dev --name update_schema && npx prisma generate
 // Resume the work, work on to handle Notifictioans,AI recomendation,progress report 
 
 model User {
-  id                Int                @id @default(autoincrement())
-  email             String             @unique
-  name              String
-  userID            String             @unique
-  emailResults      EmailResult[]
-  essayResults      EssayResult[]
-  notifications     Notification[] // relation: all notifications received by this user
-  feedbacks         Feedback[] // relation: all feedback entries given by this user
-  aiRecommendations AIRecommendation[] // AI recommendation to the users
-  progressReports   ProgressReport[] // progress report of the users
-  profile           Profile?
-  approvedQuestions Question[]         @relation("QuestionApprovedUser") // relation: questions approved by this user
-  practiceSessions  PracticeSession[] // relation: all practice sessions attempted by this user
+  id                       Int                       @id @default(autoincrement())
+  email                    String                    @unique
+  name                     String
+  userID                   String                    @unique
+  emailResults             EmailResult[]
+  essayResults             EssayResult[]
+  notifications            Notification[] // relation: all notifications received by this user
+  feedbacks                Feedback[] // relation: all feedback entries given by this user
+  aiRecommendations        AIRecommendation[] // AI recommendation to the users
+  progressReports          ProgressReport[] // progress report of the users
+  profile                  Profile?
+  approvedQuestions        Question[]                @relation("QuestionApprovedUser") // relation: questions approved by this user
+  practiceSessions         PracticeSession[] // relation: all practice sessions attempted by this user
+  practiceSessionQuestions PracticeSessionQuestion[]
 }
 
 model Badge {
@@ -236,6 +236,8 @@ model PracticeSessionQuestion {
   timeSpent      Int // time spent on this question (seconds)
   createdAt      DateTime @default(now()) // record creation timestamp
   updatedAt      DateTime @updatedAt // last updated timestamp
+  userId         Int // FK: user who attempted
+  user           User     @relation(fields: [userId], references: [id])
 }
 
 // ✅ Enum for practice type
@@ -277,7 +279,7 @@ model Feedback {
   content    String // feedback message
   category   FeedbackCategory // type of feedback: bug, suggestion, appreciation
   createdAt  DateTime         @default(now()) // time when feedback was created
-  updatedAt DateTime         @updatedAt // last updated timestamp (modifications to message)
+  updatedAt  DateTime         @updatedAt // last updated timestamp (modifications to message)
   rating     Int? // rating given by user to the platform
   isReviewed Boolean          @default(false) // whether feedback has been reviewed
 }

@@ -1,7 +1,12 @@
 import Router from "express";
-import { allTopics, oneTopic, findQuestions, createNewTopics, fetchOneQuestion, addQuestions, modifyQuestions, destroyQuestions, modifyTopic, destroyTopic, } from "../controllers/topics.controller";
+import { allTopics, oneTopic, findQuestions, createNewTopics, fetchOneQuestion, addQuestions, modifyQuestions, destroyQuestions, modifyTopic, destroyTopic, submitTheQuestion, } from "../controllers/topics.controller";
 
 const router = Router();
+
+
+
+
+router.post("/practice/submit/:topicId/:questionId",submitTheQuestion);
 
 /**
  * GET /topics
@@ -74,12 +79,14 @@ router.get("/questions/:topicId/:questionId", fetchOneQuestion);
 // category - topics category (technical, communication, aptitude)
 // description - topics description 
 //  }
+//tested
 router.post("/admin/topic", createNewTopics);
 
-
+// tested
 router.patch("/admin/topic", modifyTopic);
+// tested
 router.delete("/admin/topic/:topicId", destroyTopic);
-
+ 
 //----------------/////////---------------------------------------------
 
 /**
@@ -100,6 +107,7 @@ router.delete("/admin/topic/:topicId", destroyTopic);
  * 
  *  }
  */
+// tested**************
 router.post("/admin/question", addQuestions);
 
 
@@ -116,7 +124,7 @@ router.post("/admin/question", addQuestions);
  * Body:
  *  - any field(s) from the question schema
  */
-router.patch("/admin/:topicId/:questionId", modifyQuestions);
+router.put("/admin/:topicId/:questionId", modifyQuestions);
 
 
 

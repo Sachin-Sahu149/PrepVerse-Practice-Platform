@@ -22,6 +22,7 @@ import z from "zod";
  *  they do not show right option 
  * 
  */
+// tested****  Just handle userId
 export async function submitTheQuestion(req: Request, res: Response) {
     try {
         // get the payload 
@@ -30,7 +31,7 @@ export async function submitTheQuestion(req: Request, res: Response) {
         const bodySchema = z.object({
             // topicId: z.coerce.number().int().positive(),
             // questionId: z.coerce.number().int().positive(),
-            selectedOption: z.coerce.number().int().nonnegative(),
+            selectedOption: z.coerce.number().int().max(5).nonnegative(),
             // each question can have at most 5 minutes 
             timeTaken: z.coerce.number().int().min(0).max(300),
         });
@@ -92,6 +93,10 @@ export async function submitTheQuestion(req: Request, res: Response) {
 
         const isCorrect = selectedOption === foundQuestion.correctOption;
 
+        // Get the userId via auth
+        // temporary userId
+        const userId = 123;
+        //also handle user id 
 
         // Now create new Entry for PracticeSessionQuestion
         const newEntry = await prisma.practiceSessionQuestion.create({
@@ -101,8 +106,13 @@ export async function submitTheQuestion(req: Request, res: Response) {
                 selectedOption: selectedOption,
                 timeSpent: timeTaken,
                 isCorrect: isCorrect,
+                userId:userId
             },
         });
+
+        // handle how we wil submit the Grammar questions, according to that 
+        // change the submition logic 
+        // but for now it ok 
 
         // response with success message 
         return res.status(201).json({
@@ -121,16 +131,14 @@ export async function submitTheQuestion(req: Request, res: Response) {
 
 /**
  * GET /topics
+ * -------- working 
  */
+// tested*****************
 export async function allTopics(req: Request, res: Response) {
 
     try {
         // fetch topics 
         const topics = await prisma.topic.findMany({
-            orderBy: {
-                name: "asc",
-                id: "asc"
-            },
             select: {
                 id: true,
                 name: true,
@@ -139,7 +147,11 @@ export async function allTopics(req: Request, res: Response) {
                 description: true,
                 totalQuestion: true,
                 difficultyDistribution: true,
-            }
+            },
+            orderBy: [
+                { name: "asc" },
+                { id: "asc" }
+            ]
         });
 
         // check if topics available
@@ -167,7 +179,7 @@ export async function allTopics(req: Request, res: Response) {
 /**
  * GET /topics/:topicId/questions
  */
-
+// tested****************
 export async function oneTopic(req: Request, res: Response) {
     try {
         // validate route params
@@ -280,7 +292,7 @@ export async function oneTopic(req: Request, res: Response) {
         console.error("")
     }
 }
-
+// tested***************
 export async function findQuestions(req: Request, res: Response) {
     /**
      * GET /questions/:questionId
@@ -345,6 +357,7 @@ export async function findQuestions(req: Request, res: Response) {
     }
 }
 
+// tested***************
 export async function fetchOneQuestion(req: Request, res: Response) {
 
     /**
@@ -422,6 +435,7 @@ export async function fetchOneQuestion(req: Request, res: Response) {
     }
 }
 
+// tested*****************
 export async function addQuestions(req: Request, res: Response) {
 
     // this is the controller to add the logic to add new questions in the database 
@@ -445,7 +459,7 @@ export async function addQuestions(req: Request, res: Response) {
                 id: topicId
             }
         })
-        console.log("topicExist : ", topicExists);
+        // console.log("topicExist : ", topicExists);
 
         if (!topicExists) {
             return res.status(404).json({
@@ -456,7 +470,7 @@ export async function addQuestions(req: Request, res: Response) {
         // Optional prevent duplicate questions in same topics
         const duplicatequestion = await prisma.question.findFirst({
             where: {
-                topicId,
+                // topicId,//because it added duplicate quetions in different topics
                 text: {
                     equals: text,
                     mode: "insensitive"
@@ -466,7 +480,7 @@ export async function addQuestions(req: Request, res: Response) {
 
         if (duplicatequestion) {
             return res.status(409).json({
-                message: "Questions already exists in this tipoc",
+                message: "Questions already exists",
             });
         }
         // create questions 
@@ -523,12 +537,14 @@ export async function addQuestions(req: Request, res: Response) {
     }
 
 }
-
+// tested********************
 export async function modifyQuestions(req: Request, res: Response) {
     /**
- * PATCH /admin/:topicId/:questionId
+ * PUT /admin/:topicId/:questionId
  */
     try {
+        // Rather than partial update, just do all things 
+
         // validate route params 
         const paramParsed = destroyQuestionParamsSchema.safeParse({
             topicId: Number(req.params.topicId),
@@ -543,19 +559,14 @@ export async function modifyQuestions(req: Request, res: Response) {
 
         const { topicId, questionId } = paramParsed.data;
 
-        // validate body (partial update)
-        const bodyParsed = createQuestionSchema
-            .partial()
-            .safeParse(req.body);
+        // log the body 
+        console.log("body : ", req.body);
 
-        if (!bodyParsed.success) {
-            // console error
+        if (req.body.length === 0) {
             return res.status(400).json({
-                message: "Invalid input data",
+                message: "Invalid data"
             });
         }
-
-        const updateData = bodyParsed.data;
 
         // Fetch existing question 
         const existingQuestion = await prisma.question.findFirst({
@@ -567,9 +578,34 @@ export async function modifyQuestions(req: Request, res: Response) {
 
         if (!existingQuestion) {
             return res.status(404).json({
-                message: "Question not found for this topic",
+                message: "Question not found",
             });
         }
+
+        //type of question can not be changed 
+        if (existingQuestion.type !== req.body.type) {
+            return res.status(400).json({
+                message: "Type of question can not be change"
+            });
+        }
+
+
+        req.body.topicId = topicId;
+
+        // validate body (partial update)
+        const bodyParsed = createQuestionSchema.safeParse(req.body);
+
+        if (!bodyParsed.success) {
+            // console error
+            console.log("bodyParsed : ", bodyParsed)
+            return res.status(400).json({
+                message: "Invalid input data",
+            });
+        }
+
+        const updateData = bodyParsed.data;
+        console.log("updatePayload : ", updateData);
+
 
         // Fetch topic needed for analytics update 
         const topic = await prisma.topic.findFirst({
@@ -603,32 +639,16 @@ export async function modifyQuestions(req: Request, res: Response) {
             });
         }
 
-        // Normalize MCQ /grammar 
-        const finalUpdateData: any = {
-            ...updateData,
-        };
-
-        if (updateData.type === "Grammar") {
-            finalUpdateData.options = [];
-            finalUpdateData.correctOption = null;
-        }
-
-        if (updateData.type === "MCQ") {
-            if (!updateData.options) {
-                finalUpdateData.options = existingQuestion.options
-            }
-        }
-
         // Update question
         const updatedQuestion = await prisma.question.update({
             where: { id: questionId },
-            data: finalUpdateData,
+            data: updateData,
         });
 
         // Success response
         return res.status(200).json({
             message: "Question updated successfully",
-            data: updatedQuestion,
+            // data: updatedQuestion,
         });
 
     } catch (error) {
@@ -639,6 +659,7 @@ export async function modifyQuestions(req: Request, res: Response) {
     }
 }
 
+//tested****************
 export async function destroyQuestions(req: Request, res: Response) {
     try {
         // validate params
@@ -726,6 +747,7 @@ export async function destroyQuestions(req: Request, res: Response) {
     }
 }
 
+// tested*************
 export async function createNewTopics(req: Request, res: Response) {
     try {
         // validate request using zod 
@@ -780,7 +802,7 @@ export async function createNewTopics(req: Request, res: Response) {
         return res.status(500).json({ message: "Internal server error" });
     }
 }
-
+//tested***************
 // controller to handle the modification 
 export async function modifyTopic(req: Request, res: Response) {
     // icon, name, description 
@@ -863,6 +885,7 @@ export async function modifyTopic(req: Request, res: Response) {
  * -------------------------------------------
  * Delete a topic and all associated data.
  */
+//tested**************
 export async function destroyTopic(req: Request, res: Response) {
     try {
         // 1️⃣ Validate params

@@ -14,7 +14,8 @@ export const createQuestionSchema = z
         text: z
             .string()
             .trim()
-            .min(5, { message: "Question text must be at least 10 characters" }),
+            .min(5, { message: "Question text must be at least 10 characters" })
+            .max(1200),
 
         options: z.array(z.string().trim().min(1, { message: "Option must have at least 1 char" })).optional(),
 
@@ -31,12 +32,14 @@ export const createQuestionSchema = z
         weightage: z
             .number()
             .int()
-            .positive()
-            .default(2),
+            .min(1)
+            .max(10)
+            .positive(),
     })
     .superRefine((data, ctx) => {
         // 🔹 MCQ-specific validation
         if (data.type === "MCQ") {
+            console.log("under the validators : ");
             if (!data.options || data.options.length < 2) {
                 ctx.addIssue({
                     path: ["options"],
@@ -58,7 +61,7 @@ export const createQuestionSchema = z
                 ctx.addIssue({
                     path: ["correctOption"],
                     message: "correctOption index is out of range",
-                    code: z.ZodIssueCode.custom,
+                    code: "custom",
                 });
             }
         }
