@@ -33,7 +33,7 @@ export default function AnimatedBackground() {
                 }}
             />
             <motion.div
-                className="absolute bottom-20 right-1/4 w-72 h-72 bg-gradient-to-br from-emerald-300/25 to-teal-400/20 rounded-full blur-3xl"
+                className="absolute bottom-20 right-1/4 w-72 h-72 bg-linear-to-br from-emerald-300/25 to-teal-400/20 rounded-full blur-3xl"
                 animate={{
                     x: [0, 40, 0],
                     y: [0, -40, 0],
