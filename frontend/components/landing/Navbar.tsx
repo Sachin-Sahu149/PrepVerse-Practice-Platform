@@ -63,12 +63,12 @@ export default function Navbar() {
 
                         {/* Desktop CTA */}
                         <div className="hidden md:flex items-center gap-4">
-                            <Button
+                            {/* <Button
                                 variant="ghost"
                                 className="text-slate-700 hover:text-indigo-600 font-medium cursor-pointer"
                             >
                                 Sign In
-                            </Button>
+                            </Button> */}
                             <Button
                                 className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white rounded-xl shadow-lg shadow-indigo-500/25 group cursor-pointer"
                             >
@@ -112,12 +112,12 @@ export default function Navbar() {
                                     </a>
                                 ))}
                                 <hr className="border-slate-200" />
-                                <Button
+                                {/* <Button
                                     variant="outline"
                                     className="w-full justify-center border-slate-300"
                                 >
                                     Sign In
-                                </Button>
+                                </Button> */}
                                 <Button
                                     className="w-full justify-center bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl"
                                 >
