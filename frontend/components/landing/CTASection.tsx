@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Sparkles, CheckCircle2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 const benefits = [
     "AI-powered personalized learning",
@@ -13,6 +14,11 @@ const benefits = [
 ];
 
 function CTASection() {
+
+    const router = useRouter();
+    const goToDashboard = () => {
+        router.push("/dashboard");
+    }
     return (
         <section className="py-24 relative overflow-hidden">
             {/* Animated Background */}
@@ -120,6 +126,7 @@ function CTASection() {
                             {/* CTA Buttons */}
                             <div className="space-y-3">
                                 <Button
+                                    onClick={goToDashboard}
                                     size="lg"
                                     className="w-full bg-linear-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-6 text-lg rounded-2xl shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all duration-300 group"
                                 >
@@ -129,6 +136,7 @@ function CTASection() {
                                 <Button
                                     size="lg"
                                     variant="outline"
+                                    onClick={goToDashboard}
                                     className="w-full border-2 border-slate-200 hover:border-indigo-300 text-slate-700 hover:text-indigo-700 py-6 text-lg rounded-2xl transition-all duration-300"
                                 >
                                     Explore Practice Tests

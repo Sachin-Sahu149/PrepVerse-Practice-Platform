@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Brain, Menu, X, ArrowRight } from 'lucide-react';
+import { Menu, X, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 type navLinksTypes = {
     name: string,
@@ -27,6 +28,12 @@ export default function Navbar() {
         window.addEventListener("scroll", handleScroll);
         return () => window.removeEventListener("scroll", handleScroll);
     }, []);
+
+    const router = useRouter();
+
+    const goToDashboard = () => {
+        router.push("/dashboard");
+    }
 
 
     return (
@@ -70,7 +77,8 @@ export default function Navbar() {
                                 Sign In
                             </Button> */}
                             <Button
-                                className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white rounded-xl shadow-lg shadow-indigo-500/25 group cursor-pointer"
+                                onClick={goToDashboard}
+                                className="bg-linear-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white rounded-xl shadow-lg shadow-indigo-500/25 group cursor-pointer"
                             >
                                 Get Started
                                 <ArrowRight className="ml-1 w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
@@ -119,7 +127,8 @@ export default function Navbar() {
                                     Sign In
                                 </Button> */}
                                 <Button
-                                    className="w-full justify-center bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl"
+                                    onClick={goToDashboard}
+                                    className="w-full justify-center bg-linear-to-r from-indigo-600 to-violet-600 text-white rounded-xl"
                                 >
                                     Get Started
                                 </Button>

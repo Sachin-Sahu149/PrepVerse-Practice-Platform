@@ -1,8 +1,10 @@
 import React from 'react'
 
+// layout file for dashbaord to contain child components 
+
 function Layout({ children }: { children: React.ReactNode }) {
     return (
-        <div className="w-screen h-screen overflow-hidden">
+        <div>
             {children}
         </div>
     )

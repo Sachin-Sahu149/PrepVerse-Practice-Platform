@@ -4,10 +4,16 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Sparkles, Brain, Target } from 'lucide-react';
 import AnimatedBackground from './AnimatedBackground';
+import { useRouter } from 'next/navigation';
 // import AnimatedBackground from './AnimatedBackground';
 
 
 function HeroSection() {
+
+    const router = useRouter();
+    const goToDashboard = ()=>{
+        router.push("/dashboard");
+    }
 
     return (
         <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-linear-to-b from-slate-50 via-white to-indigo-50/30">
@@ -59,6 +65,7 @@ function HeroSection() {
                     className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16"
                 >
                     <Button
+                        onClick={goToDashboard}
                         size="lg"
                         className="bg-linear-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white px-8 py-6 text-lg rounded-2xl shadow-xl shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all duration-300 group"
                     >

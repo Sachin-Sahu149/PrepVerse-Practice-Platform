@@ -10,6 +10,7 @@ import {
     XCircle,
     CheckCircle2
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 const comparisons = [
     {
@@ -46,6 +47,10 @@ const comparisons = [
 
 
 function WhySkillVerseSection() {
+    const router = useRouter();
+    const goToDashboard = () => {
+        router.push("/dashboard");
+    }
     return (
         <section className="py-24 bg-linear-to-b from-white via-rose-50/20 to-white relative overflow-hidden">
             {/* Background */}
@@ -120,14 +125,15 @@ function WhySkillVerseSection() {
                     className="text-center mt-16"
                 >
                     <p className="text-xl text-slate-600 mb-6">
-                        Ready to experience the future of interview preparation?
+                        Ready to ace every online assessment with confidence?
                     </p>
                     <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
+                        onClick={goToDashboard}
                         className=" cursor-pointer px-8 py-4 rounded-2xl bg-linear-to-r from-indigo-600 to-violet-600 text-white font-semibold text-lg shadow-xl shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-shadow"
                     >
-                        Build Interview Confidence →
+                        Start Acing Assessments →
                     </motion.button>
                 </motion.div>
             </div>
